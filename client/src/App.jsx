@@ -3,6 +3,7 @@ import Header from './components/Header.jsx';
 import ModeSelect from './components/ModeSelect.jsx';
 import KeyboardTips from './components/KeyboardTips.jsx';
 import ModeNotice from './components/ModeNotice.jsx';
+import VoiceControls from './components/VoiceControls.jsx';
 import JobInput from './components/JobInput.jsx';
 import Results from './components/Results.jsx';
 import ProfileForm from './components/ProfileForm.jsx';

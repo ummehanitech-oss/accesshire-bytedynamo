@@ -51,6 +51,11 @@ AccessHire creates a streamlined, low-stress bridge between job seekers and job 
 - **Profile-First Navigation Flow:** Structured flow (Mode screen -> My profile -> Analyze a job -> Saved jobs). "Analyze a job" is guarded until the user completes their profile with a full name and at least one skill.
 - **Zero-Score Rule:** When a compatibility score is 0, guided application steps and checklists are hidden, displaying an informative status card with missing skills and options to edit profile or try another job.
 - **Keyboard & Screen Reader Accessibility:** 3px focus rings (4px in keyboard mode), keyboard tips panel, screen reader live announcements, skip-to-content link, semantic landmarks, and automatic focus management on navigation.
+- **Voice Assistance Mode:** Dedicated voice-driven and hands-free interface enabled when "Voice assistance mode" is selected.
+  - **Speech Synthesis Output:** Integrated speech synthesis controls allowing users to read the plain English summary, all application steps, or individual guided wizard steps aloud, with immediate stop capability.
+  - **Voice Command Recognition:** Built with native Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`), activated strictly on-demand via a manual "Start listening" button with flexible English phrase matching.
+  - **Complete Action Set:** Hands-free execution for `"next step"`, `"previous step"`, `"mark done"`, `"read summary"`, `"read steps"`, `"stop"`, `"go to profile"`, `"go to analyze"`, `"go to saved jobs"`, and `"help"`.
+  - **Accessible Live Status & Privacy:** Polite `role="status"` region announcing heard speech and executed commands, 44px touch targets, error handling with keyboard fallback, and cloud speech privacy notice.
 
 ---
 
