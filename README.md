@@ -56,6 +56,11 @@ AccessHire creates a streamlined, low-stress bridge between job seekers and job 
 - **Accessible Display Settings Panel:** An accessible, labelled panel toggled via a dedicated button, closable with the `Esc` key, and available across all application modes.
 - **High-Contrast Theme (Contrast >= 7:1):** WCAG AAA-compliant dark theme featuring pure black background, light text, strong borders, and stateful toggle buttons with `aria-pressed`.
 - **Customizable Root Text Scaling:** Dynamic text sizing buttons (smaller, normal, larger, largest) driven by CSS variables on `<html>`, persisted across sessions in `localStorage`.
+- **Voice Assistance Mode:** Dedicated voice-driven and hands-free interface enabled when "Voice assistance mode" is selected.
+  - **Speech Synthesis Output:** Integrated speech synthesis controls allowing users to read the plain English summary, all application steps, or individual guided wizard steps aloud, with immediate stop capability.
+  - **Voice Command Recognition:** Built with native Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`), activated strictly on-demand via a manual "Start listening" button with flexible English phrase matching.
+  - **Complete Action Set:** Hands-free execution for `"next step"`, `"previous step"`, `"mark done"`, `"read summary"`, `"read steps"`, `"stop"`, `"go to profile"`, `"go to analyze"`, `"go to saved jobs"`, and `"help"`.
+  - **Accessible Live Status & Privacy:** Polite `role="status"` region announcing heard speech and executed commands, 44px touch targets, error handling with keyboard fallback, and cloud speech privacy notice.
 
 ---
 
