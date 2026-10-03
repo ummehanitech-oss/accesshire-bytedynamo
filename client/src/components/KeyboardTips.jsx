@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 
 /**
+<<<<<<< HEAD
  * KeyboardTips component
  *
  * A collapsible assistance panel shown in Keyboard Navigation Mode.
  * Lists the main keyboard navigation keys and global shortcut sequences.
+=======
+ * Collapsible Keyboard Navigation Tips panel shown in Keyboard Navigation Mode.
+ * Lists global navigation shortcuts ("g p", "g a", "g s", "?", Esc) and basic keyboard commands.
+>>>>>>> feature/multi-mode-resume-jobs
  */
 export default function KeyboardTips({ onOpenShortcutsHelp }) {
   const [isOpen, setIsOpen] = useState(true);
@@ -12,6 +17,7 @@ export default function KeyboardTips({ onOpenShortcutsHelp }) {
   return (
     <aside
       className="keyboard-tips-panel"
+      role="complementary"
       aria-label="Keyboard navigation assistance"
       style={{
         background: '#ffffff',
@@ -32,20 +38,34 @@ export default function KeyboardTips({ onOpenShortcutsHelp }) {
               type="button"
               className="btn btn-secondary"
               onClick={onOpenShortcutsHelp}
+<<<<<<< HEAD
               aria-label="Open keyboard shortcuts help dialog (?)"
               style={{ minHeight: '34px', padding: '0.2rem 0.65rem', fontSize: '0.85rem' }}
             >
               All Shortcuts (?)
+=======
+              style={{ minHeight: '36px', padding: '0.25rem 0.75rem', fontSize: '0.85rem' }}
+              aria-label="Open keyboard shortcuts help dialog"
+            >
+              Shortcuts list (?)
+>>>>>>> feature/multi-mode-resume-jobs
             </button>
           )}
           <button
             type="button"
             className="btn btn-secondary"
+<<<<<<< HEAD
             onClick={() => setIsOpen((prev) => !prev)}
             aria-expanded={isOpen}
             aria-controls="keyboard-tips-list"
             aria-label={isOpen ? 'Hide keyboard navigation tips' : 'Show keyboard navigation tips'}
             style={{ minHeight: '34px', padding: '0.2rem 0.65rem', fontSize: '0.85rem' }}
+=======
+            onClick={() => setIsOpen(prev => !prev)}
+            aria-expanded={isOpen}
+            aria-controls="keyboard-tips-list"
+            style={{ minHeight: '36px', padding: '0.25rem 0.75rem', fontSize: '0.85rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
           >
             {isOpen ? 'Hide Tips' : 'Show Tips'}
           </button>
@@ -53,6 +73,7 @@ export default function KeyboardTips({ onOpenShortcutsHelp }) {
       </div>
 
       {isOpen && (
+<<<<<<< HEAD
         <ul
           id="keyboard-tips-list"
           style={{
@@ -85,6 +106,27 @@ export default function KeyboardTips({ onOpenShortcutsHelp }) {
             <strong>Esc:</strong> Close the help dialog or dismiss open menus.
           </li>
         </ul>
+=======
+        <div id="keyboard-tips-list">
+          <ul
+            style={{
+              marginTop: '0.75rem',
+              paddingLeft: '1.25rem',
+              fontSize: '0.925rem',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.6
+            }}
+          >
+            <li><strong>g then p:</strong> Go to My Profile page (when not typing).</li>
+            <li><strong>g then a:</strong> Go to Analyze a Job page (when not typing).</li>
+            <li><strong>g then s:</strong> Go to Saved Jobs page (when not typing).</li>
+            <li><strong>?:</strong> Open full keyboard shortcuts help dialog.</li>
+            <li><strong>Tab / Shift + Tab:</strong> Move focus forward and backward between interactive elements.</li>
+            <li><strong>Enter / Space:</strong> Activate buttons, links, and toggle checkboxes.</li>
+            <li><strong>Esc:</strong> Close open modal dialogs or dismiss tips.</li>
+          </ul>
+        </div>
+>>>>>>> feature/multi-mode-resume-jobs
       )}
     </aside>
   );

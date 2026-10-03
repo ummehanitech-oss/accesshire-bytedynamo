@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import { PDFParse } from 'pdf-parse';
 import { analyzeJob } from '../services/gemini.js';
 import { fetchPage, extractJobText, isSafeUrl } from '../services/urlImport.js';
+import { extractPdfText } from '../utils/documentText.js';
 
 const router = Router();
 
@@ -14,18 +14,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5 MB max
   }
 });
-
-// Helper to extract text from PDF buffer
-async function extractPdfText(buffer) {
-  try {
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
-    return (result && result.text) ? result.text.trim() : '';
-  } catch (err) {
-    console.warn('PDF parser encountered an issue:', err.message);
-    return '';
-  }
-}
 
 // -----------------------------------------------------------------------------
 // POST /api/analyze

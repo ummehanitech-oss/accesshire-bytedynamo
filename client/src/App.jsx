@@ -2,8 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header.jsx';
 import ModeSelect from './components/ModeSelect.jsx';
 import KeyboardTips from './components/KeyboardTips.jsx';
+<<<<<<< HEAD
 import VoiceControls from './components/VoiceControls.jsx';
 import ShortcutsHelp from './components/ShortcutsHelp.jsx';
+=======
+import ShortcutsHelp from './components/ShortcutsHelp.jsx';
+import VoiceControls from './components/VoiceControls.jsx';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
+>>>>>>> feature/multi-mode-resume-jobs
 import JobInput from './components/JobInput.jsx';
 import Results from './components/Results.jsx';
 import ProfileForm from './components/ProfileForm.jsx';
@@ -22,7 +28,11 @@ function checkProfileComplete(prof) {
 }
 
 function AppContent() {
+<<<<<<< HEAD
   const { mode, isSelectingMode, announce, announcement } = useMode();
+=======
+  const { hasMode, isSelectingMode, announce, announcement } = useMode();
+>>>>>>> feature/multi-mode-resume-jobs
 
   // Navigation order: "My profile" -> "Analyze a job" -> "Saved jobs"
   const [activeView, setActiveView] = useState('profile');
@@ -40,6 +50,15 @@ function AppContent() {
 
   // Ref to the view heading for accessible focus management
   const viewHeadingRef = useRef(null);
+
+  // Global keyboard shortcuts: "g p", "g a", "g s", "?", "Esc"
+  const { isHelpOpen, openHelp, closeHelp, openerElementRef } = useKeyboardShortcuts({
+    onNavigate: (view) => {
+      if (view === 'profile') handleNavigateToProfile();
+      else if (view === 'analyze') handleNavigateToAnalyze();
+      else if (view === 'saved') handleNavigateToSaved();
+    }
+  });
 
   // Load profile on initial mount to know completeness
   useEffect(() => {
@@ -209,6 +228,7 @@ function AppContent() {
         Skip to main content
       </a>
 
+<<<<<<< HEAD
       {/* Screen reader live region for status announcements across the app */}
       <div
         className="sr-only"
@@ -216,6 +236,10 @@ function AppContent() {
         aria-atomic="true"
         id="app-live-announcements"
       >
+=======
+      {/* Screen reader live region for announcements */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+>>>>>>> feature/multi-mode-resume-jobs
         {announcement}
       </div>
 
@@ -236,16 +260,22 @@ function AppContent() {
         </main>
       ) : (
         <>
+<<<<<<< HEAD
           {/* Keyboard Tips when in keyboard navigation mode */}
           {mode === 'keyboard' && (
             <KeyboardTips onOpenShortcutsHelp={handleOpenHelp} />
           )}
+=======
+          {/* Baseline Mode Notifications */}
+          {hasMode('keyboard') && <KeyboardTips onOpenShortcutsHelp={openHelp} />}
+          <VoiceControls />
+>>>>>>> feature/multi-mode-resume-jobs
 
           {/* Voice controls when in voice assistance mode */}
           {mode === 'voice' && <VoiceControls />}
 
           {/* Navigation order: "My profile", "Analyze a job", "Saved jobs" */}
-          <nav className="main-nav" aria-label="Main Navigation">
+          <nav className="main-nav" role="navigation" aria-label="Main Navigation">
             <ul className="nav-list">
               <li>
                 <button
@@ -284,7 +314,11 @@ function AppContent() {
           </nav>
 
           {/* Main Content Landmark */}
+<<<<<<< HEAD
           <main id="main-content" aria-label="Main Content" tabIndex={-1}>
+=======
+          <main id="main-content" role="main" aria-label="Main Content" tabIndex={-1}>
+>>>>>>> feature/multi-mode-resume-jobs
             {/* VIEW 1: MY PROFILE */}
             {activeView === 'profile' && (
               <div>
@@ -371,6 +405,12 @@ function AppContent() {
           Accessible Assistive Technology designed with plain English, semantic markup, and WCAG AA standards.
         </p>
       </footer>
+      {/* Keyboard Shortcuts Help Dialog (role="dialog", aria-modal, focus trap) */}
+      <ShortcutsHelp
+        isOpen={isHelpOpen}
+        onClose={closeHelp}
+        openerRef={openerElementRef}
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import healthRouter from './routes/health.js';
 import analyzeRouter from './routes/analyze.js';
 import profileRouter from './routes/profile.js';
 import applicationsRouter from './routes/applications.js';
+import resumeRouter from './routes/resume.js';
 import { errorHandler } from './utils/errorHandler.js';
 
 // Load environment variables from .env file
@@ -46,11 +47,24 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+// Lightweight request logging: method, path (without query string), status code, duration
+// Does NOT log headers, request bodies, credentials, or sensitive data
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const pathOnly = (req.originalUrl || req.url || '').split('?')[0];
+    console.log(`${req.method} ${pathOnly} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
+
 // Route registrations
 app.use('/api/health', healthRouter);
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/applications', applicationsRouter);
+app.use('/api/resume', resumeRouter);
 
 // Central error handler
 app.use(errorHandler);

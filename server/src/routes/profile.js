@@ -1,7 +1,18 @@
 import { Router } from 'express';
-import { getProfile, saveProfile, VALID_ACCESSIBILITY_PREFERENCES } from '../storage.js';
+import multer from 'multer';
+import { getProfile, saveProfile } from '../storage.js';
+import { extractTextFromUpload } from '../utils/documentText.js';
+import { parseResumeWithAI } from '../services/resumeImport.js';
 
 const router = Router();
+
+// In-memory multer storage for resume uploads (5 MB max)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5 MB max
+  }
+});
 
 // GET /api/profile
 // Returns current candidate profile
@@ -19,63 +30,7 @@ router.get('/', async (req, res, next) => {
 const handleSaveProfile = async (req, res, next) => {
   try {
     const body = req.body || {};
-    const sanitized = {};
-
-    // Validate email format if provided
-    if (body.email !== undefined) {
-      const email = String(body.email).trim();
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return res.status(400).json({ error: 'Please enter a valid email address.' });
-      }
-      sanitized.email = email;
-    }
-
-    // Validate accessibility preference
-    // Accepts only: "voice", "keyboard", "screen-reader", "simplified", or "" (default)
-    if (body.accessibilityPreference !== undefined) {
-      let accessibilityPreference = String(body.accessibilityPreference).trim();
-      if (!VALID_ACCESSIBILITY_PREFERENCES.includes(accessibilityPreference)) {
-        accessibilityPreference = '';
-      }
-      sanitized.accessibilityPreference = accessibilityPreference;
-    }
-
-    // Validate years of experience if provided
-    if (body.yearsExperience !== undefined) {
-      let yearsExperience = Number(body.yearsExperience);
-      if (Number.isNaN(yearsExperience) || yearsExperience < 0) {
-        yearsExperience = 0;
-      }
-      sanitized.yearsExperience = yearsExperience;
-    }
-
-    // Full name if provided
-    if (body.fullName !== undefined || body.name !== undefined) {
-      sanitized.fullName = String(body.fullName ?? body.name ?? '').trim();
-    }
-
-    // Education if provided
-    if (body.education !== undefined) {
-      sanitized.education = String(body.education || '').trim();
-    }
-
-    // Summary if provided
-    if (body.summary !== undefined || body.experience !== undefined) {
-      sanitized.summary = String(body.summary ?? body.experience ?? '').trim();
-    }
-
-    // Normalize skills if provided
-    if (body.skills !== undefined) {
-      if (Array.isArray(body.skills)) {
-        sanitized.skills = body.skills.map(s => String(s).trim()).filter(Boolean);
-      } else if (typeof body.skills === 'string') {
-        sanitized.skills = body.skills.split(',').map(s => s.trim()).filter(Boolean);
-      } else {
-        sanitized.skills = [];
-      }
-    }
-
-    const saved = await saveProfile(sanitized);
+    const saved = await saveProfile(body);
     res.json({ success: true, message: 'Profile updated successfully.', profile: saved });
   } catch (err) {
     next(err);
@@ -84,5 +39,28 @@ const handleSaveProfile = async (req, res, next) => {
 
 router.put('/', handleSaveProfile);
 router.post('/', handleSaveProfile);
+
+// POST /api/profile/import-resume
+// Parse uploaded resume in-memory and return prefill data without writing to disk or saving
+router.post('/import-resume', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No resume file uploaded. Please select a PDF, Word document, or plain text file.'
+      });
+    }
+
+    const text = await extractTextFromUpload(req.file);
+    const result = await parseResumeWithAI(text);
+
+    res.json({
+      success: true,
+      profile: result.profile,
+      warnings: result.warnings
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;

@@ -19,18 +19,31 @@ export default function SavedJobs({ onSelectJob }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: '' }
+  const { announce } = useMode();
 
   // Load saved jobs on mount
   const loadSavedJobs = async () => {
     try {
       setLoading(true);
       const data = await getApplications();
+<<<<<<< HEAD
       setJobs(Array.isArray(data) ? data : []);
     } catch (_err) {
+=======
+      const jobList = Array.isArray(data) ? data : [];
+      setJobs(jobList);
+      if (announce) {
+        announce(`Loaded ${jobList.length} saved job applications.`);
+      }
+    } catch (err) {
+>>>>>>> feature/multi-mode-resume-jobs
       setStatus({
         type: 'error',
         message: 'Could not load saved job applications.'
       });
+      if (announce) {
+        announce('Could not load saved job applications.');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,6 +65,9 @@ export default function SavedJobs({ onSelectJob }) {
         type: 'error',
         message: err.message || 'Could not load job details.'
       });
+      if (announce) {
+        announce(err.message || 'Could not load job details.');
+      }
     }
   };
 
@@ -67,13 +83,25 @@ export default function SavedJobs({ onSelectJob }) {
         type: 'success',
         message: `Removed "${jobTitle}" from your saved jobs.`
       });
+<<<<<<< HEAD
       announce(`Job "${jobTitle}" deleted from saved jobs.`);
+=======
+      if (announce) {
+        announce(`Removed "${jobTitle}" from your saved jobs.`);
+      }
+>>>>>>> feature/multi-mode-resume-jobs
     } catch (err) {
       setStatus({
         type: 'error',
         message: err.message || 'Failed to remove job.'
       });
+<<<<<<< HEAD
       announce(`Failed to delete job: ${err.message || 'Server error'}`);
+=======
+      if (announce) {
+        announce(`Failed to remove job: ${err.message || 'Server error'}`);
+      }
+>>>>>>> feature/multi-mode-resume-jobs
     }
   };
 
@@ -135,7 +163,11 @@ export default function SavedJobs({ onSelectJob }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="source-link"
+<<<<<<< HEAD
                         aria-label={`View original job page for ${job.jobTitle} (opens in new window)`}
+=======
+                        aria-label={`View original job page for ${job.jobTitle} (opens in new tab)`}
+>>>>>>> feature/multi-mode-resume-jobs
                       >
                         <span>View original job page</span>
                         <span aria-hidden="true">&#8599;</span>
@@ -149,8 +181,13 @@ export default function SavedJobs({ onSelectJob }) {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => handleOpen(job.id)}
+<<<<<<< HEAD
                     aria-label={`Open analysis for ${job.jobTitle} at ${job.company || 'company'}`}
                     style={{ minHeight: '40px', padding: '0.5rem 1rem' }}
+=======
+                    aria-label={`Open analysis for ${job.jobTitle}`}
+                    style={{ minHeight: '44px', padding: '0.5rem 1rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
                   >
                     Open Analysis
                   </button>
@@ -159,8 +196,13 @@ export default function SavedJobs({ onSelectJob }) {
                     type="button"
                     className="btn btn-danger"
                     onClick={() => handleDelete(job.id, job.jobTitle)}
+<<<<<<< HEAD
                     aria-label={`Delete saved analysis for ${job.jobTitle}`}
                     style={{ minHeight: '40px', padding: '0.5rem 0.75rem' }}
+=======
+                    aria-label={`Delete ${job.jobTitle} from saved jobs`}
+                    style={{ minHeight: '44px', padding: '0.5rem 0.75rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
                   >
                     Delete
                   </button>

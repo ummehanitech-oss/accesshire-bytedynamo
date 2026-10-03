@@ -145,6 +145,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
   const [completedSteps, setCompletedSteps] = useState(new Set(initialCompleted));
   const [viewMode, setViewMode] = useState('wizard'); // 'wizard' | 'checklist'
   const [saveStatus, setSaveStatus] = useState('');
+  const { announce } = useMode();
 
   useEffect(() => {
     setCompletedSteps(new Set(initialCompleted));
@@ -159,6 +160,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
   // Toggle completion of a step
   const handleToggleStep = async (stepIdx) => {
     const updated = new Set(completedSteps);
+    const willBeDone = !updated.has(stepIdx);
     if (updated.has(stepIdx)) {
       updated.delete(stepIdx);
     } else {
@@ -173,11 +175,18 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
         await updateApplicationProgress(applicationId, Array.from(updated));
         setSaveStatus('Progress saved.');
         if (announce) {
+<<<<<<< HEAD
           announce('Checklist progress saved.');
+=======
+          announce(`Progress saved. Step ${stepIdx + 1} marked ${willBeDone ? 'done' : 'incomplete'}.`);
+>>>>>>> feature/multi-mode-resume-jobs
         }
       } catch (err) {
         console.warn('Failed to save step progress:', err.message);
         setSaveStatus('Could not save progress to server.');
+        if (announce) {
+          announce('Could not save progress to server.');
+        }
       }
     }
   };
@@ -193,8 +202,12 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
             type="button"
             className={`btn ${viewMode === 'wizard' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('wizard')}
+<<<<<<< HEAD
             aria-label="Switch to step-by-step wizard view"
             style={{ minHeight: '36px', padding: '0.4rem 0.9rem', fontSize: '0.9rem' }}
+=======
+            style={{ minHeight: '44px', padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
           >
             Step-by-Step View
           </button>
@@ -202,8 +215,12 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
             type="button"
             className={`btn ${viewMode === 'checklist' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('checklist')}
+<<<<<<< HEAD
             aria-label="Switch to full checklist view"
             style={{ minHeight: '36px', padding: '0.4rem 0.9rem', fontSize: '0.9rem' }}
+=======
+            style={{ minHeight: '44px', padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
           >
             Full Checklist View
           </button>
@@ -240,7 +257,11 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               className="btn btn-secondary"
               onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
               disabled={currentStepIndex === 0}
+<<<<<<< HEAD
               aria-label="Go to previous step"
+=======
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
             >
               &larr; Previous Step
             </button>
@@ -250,7 +271,11 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               className="btn btn-primary"
               onClick={() => setCurrentStepIndex((prev) => Math.min(totalSteps - 1, prev + 1))}
               disabled={currentStepIndex === totalSteps - 1}
+<<<<<<< HEAD
               aria-label="Go to next step"
+=======
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
+>>>>>>> feature/multi-mode-resume-jobs
             >
               Next Step &rarr;
             </button>
@@ -305,8 +330,9 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
  * Main Results Component
  */
 export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
+  const { hasMode } = useMode();
   if (!analysis) return null;
-  if (typeof document !== 'undefined' && document.documentElement.dataset.mode === 'simplified') {
+  if (hasMode('simplified')) {
     return <SimplifiedResults analysis={analysis} onNewAnalysis={onNewAnalysis} onEditProfile={onEditProfile} />;
   }
 
@@ -349,7 +375,11 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               target="_blank"
               rel="noopener noreferrer"
               className="source-link"
+<<<<<<< HEAD
               aria-label={`View original job page for ${jobTitle || 'job position'} (opens in new window)`}
+=======
+              aria-label={`View original job page for ${jobTitle || 'job'} (opens in new tab)`}
+>>>>>>> feature/multi-mode-resume-jobs
             >
               <span>View original job page</span>
               <span aria-hidden="true">&#8599;</span>
@@ -362,6 +392,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
             type="button"
             className="btn btn-secondary"
             onClick={onNewAnalysis}
+            style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
           >
             Analyze Another Job
           </button>
@@ -412,6 +443,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-primary"
               onClick={onEditProfile}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Edit my profile
             </button>
@@ -419,6 +451,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-secondary"
               onClick={onNewAnalysis}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Analyze another job
             </button>
@@ -445,6 +478,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-primary"
               onClick={onEditProfile}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Edit my profile
             </button>
@@ -452,6 +486,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-secondary"
               onClick={onNewAnalysis}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Analyze another job
             </button>

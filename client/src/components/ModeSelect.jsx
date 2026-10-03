@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMode, MODES } from '../context/ModeContext.jsx';
 
 export default function ModeSelect({ onCompleted }) {
-  const { mode, chooseMode } = useMode();
-  const [selected, setSelected] = useState(mode || '');
+  const { modes, chooseModes, announce } = useMode();
+  const [selected, setSelected] = useState(modes && modes.length > 0 ? [...modes] : []);
   const h1Ref = useRef(null);
 
   // Move focus to <h1> when this full-page screen appears
@@ -13,11 +13,25 @@ export default function ModeSelect({ onCompleted }) {
     }
   }, []);
 
+  const handleToggleMode = (id) => {
+    setSelected((prev) => {
+      const isAlreadySelected = prev.includes(id);
+      const next = isAlreadySelected
+        ? prev.filter((item) => item !== id)
+        : [...prev, id];
+
+      if (announce) {
+        announce(`${next.length} mode${next.length === 1 ? '' : 's'} selected.`);
+      }
+      return next;
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!selected) return;
+    if (selected.length === 0) return;
 
-    chooseMode(selected);
+    chooseModes(selected);
     if (onCompleted) {
       onCompleted(selected);
     }
@@ -36,20 +50,20 @@ export default function ModeSelect({ onCompleted }) {
           Choose how you want to use AccessHire
         </h1>
         <p className="section-subtitle" style={{ fontSize: '1.05rem', marginBottom: '1.75rem' }}>
-          Select the mode that best matches how you navigate and interact with web pages. You can change this at any time from the header.
+          Select one or more modes that match how you navigate and interact with web pages. You can choose multiple modes together and change them at any time from the header.
         </p>
 
         <form onSubmit={handleSubmit} noValidate>
           <fieldset style={{ padding: '1.25rem', marginBottom: '1.5rem', border: '2px solid var(--color-border)' }}>
             <legend style={{ fontWeight: 700, padding: '0 0.5rem' }}>
-              Select an Accessibility Mode
+              Select one or more modes
             </legend>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
               {Object.values(MODES).map((item) => {
                 const inputId = `mode-option-${item.id}`;
                 const descId = `mode-desc-${item.id}`;
-                const isChecked = selected === item.id;
+                const isChecked = selected.includes(item.id);
 
                 return (
                   <div
@@ -65,15 +79,16 @@ export default function ModeSelect({ onCompleted }) {
                       cursor: 'pointer',
                       transition: 'border-color 0.15s ease, background-color 0.15s ease'
                     }}
-                    onClick={() => setSelected(item.id)}
+                    onClick={() => handleToggleMode(item.id)}
                   >
                     <input
-                      type="radio"
+                      type="checkbox"
                       id={inputId}
                       name="accessibilityModeSelection"
                       value={item.id}
                       checked={isChecked}
-                      onChange={(e) => setSelected(e.target.value)}
+                      onChange={() => handleToggleMode(item.id)}
+                      onClick={(e) => e.stopPropagation()}
                       aria-describedby={descId}
                       style={{
                         width: '1.35rem',
@@ -119,21 +134,26 @@ export default function ModeSelect({ onCompleted }) {
             <button
               type="submit"
               className="btn btn-primary"
+<<<<<<< HEAD
               disabled={!selected}
               aria-describedby={!selected ? 'mode-disabled-explanation' : undefined}
               aria-label="Continue with selected accessibility mode"
+=======
+              disabled={selected.length === 0}
+              aria-describedby={selected.length === 0 ? 'mode-disabled-explanation' : undefined}
+>>>>>>> feature/multi-mode-resume-jobs
               style={{ minWidth: '180px', fontSize: '1.05rem', padding: '0.85rem 1.75rem' }}
             >
               Continue
             </button>
 
-            {!selected && (
+            {selected.length === 0 && (
               <p
                 id="mode-disabled-explanation"
                 className="form-help"
                 style={{ marginTop: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}
               >
-                The Continue button is disabled until you choose one of the four modes above.
+                Choose at least one mode to continue.
               </p>
             )}
           </div>

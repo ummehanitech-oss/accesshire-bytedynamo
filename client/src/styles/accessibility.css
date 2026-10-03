@@ -11,7 +11,7 @@
 }
 
 /* Thicker focus outlines when Keyboard Navigation Mode is active */
-[data-mode="keyboard"] :focus-visible {
+[data-modes~="keyboard"] :focus-visible {
   outline: 4px solid #1d4ed8 !important;
   outline-offset: 4px !important;
 }

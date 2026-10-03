@@ -3,7 +3,7 @@
    Contains:
    1. Dynamic text scaling variables
    2. High-contrast theme (dark background, light text, contrast >= 7:1)
-   3. Simplified visual mode (data-mode="simplified")
+   3. Simplified visual mode (data-modes~="simplified")
    4. Display settings panel and controls
    5. Simplified results section stepper
    ========================================================================== */
@@ -175,81 +175,81 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   3. Simplified Visual Mode (data-mode="simplified")
+   3. Simplified Visual Mode (data-modes~="simplified")
    -------------------------------------------------------------------------- */
-[data-mode="simplified"] {
+[data-modes~="simplified"] {
   --font-size-base: 20px;
 }
 
-[data-mode="simplified"] body {
+[data-modes~="simplified"] body {
   font-size: calc(20px * var(--font-scale, 1)) !important;
   line-height: 1.75 !important;
   background-color: #ffffff !important;
 }
 
-[data-theme="high-contrast"][data-mode="simplified"] body {
+[data-theme="high-contrast"][data-modes~="simplified"] body {
   background-color: #000000 !important;
 }
 
 /* More spacing and single column container */
-[data-mode="simplified"] .app-container {
+[data-modes~="simplified"] .app-container {
   max-width: 820px !important;
   padding: 2rem 1.25rem 4rem 1.25rem !important;
 }
 
-[data-mode="simplified"] .card-section {
+[data-modes~="simplified"] .card-section {
   padding: 2.25rem 2rem !important;
   margin-bottom: 2.5rem !important;
   border-width: 2px !important;
 }
 
 /* Headings scale to at least 20px */
-[data-mode="simplified"] h1,
-[data-mode="simplified"] .site-title {
+[data-modes~="simplified"] h1,
+[data-modes~="simplified"] .site-title {
   font-size: 2.2rem !important;
   line-height: 1.3 !important;
   margin-bottom: 1rem !important;
 }
 
-[data-mode="simplified"] h2,
-[data-mode="simplified"] .section-title,
-[data-mode="simplified"] .job-headline {
+[data-modes~="simplified"] h2,
+[data-modes~="simplified"] .section-title,
+[data-modes~="simplified"] .job-headline {
   font-size: 1.85rem !important;
   line-height: 1.35 !important;
   margin-bottom: 1rem !important;
 }
 
-[data-mode="simplified"] h3,
-[data-mode="simplified"] legend {
+[data-modes~="simplified"] h3,
+[data-modes~="simplified"] legend {
   font-size: 1.5rem !important;
   line-height: 1.4 !important;
   margin-bottom: 0.75rem !important;
 }
 
-[data-mode="simplified"] h4 {
+[data-modes~="simplified"] h4 {
   font-size: 1.3rem !important;
   line-height: 1.4 !important;
   margin-bottom: 0.5rem !important;
 }
 
 /* Single column layouts everywhere */
-[data-mode="simplified"] .nav-list,
-[data-mode="simplified"] .skills-comparison-grid,
-[data-mode="simplified"] .info-list,
-[data-mode="simplified"] .saved-jobs-list {
+[data-modes~="simplified"] .nav-list,
+[data-modes~="simplified"] .skills-comparison-grid,
+[data-modes~="simplified"] .info-list,
+[data-modes~="simplified"] .saved-jobs-list {
   display: flex !important;
   flex-direction: column !important;
   grid-template-columns: 1fr !important;
   gap: 1.25rem !important;
 }
 
-[data-mode="simplified"] .score-container {
+[data-modes~="simplified"] .score-container {
   flex-direction: column !important;
   align-items: flex-start !important;
   gap: 1.25rem !important;
 }
 
-[data-mode="simplified"] .nav-button {
+[data-modes~="simplified"] .nav-button {
   width: 100% !important;
   text-align: left !important;
   padding: 1rem 1.25rem !important;
@@ -258,22 +258,22 @@ body {
   border-radius: 6px !important;
 }
 
-[data-mode="simplified"] .nav-button.active {
+[data-modes~="simplified"] .nav-button.active {
   border-width: 3px !important;
   border-color: var(--color-primary) !important;
 }
 
 /* Fewer decorations: remove shadows, rounded badges, decorative graphics */
-[data-mode="simplified"] * {
+[data-modes~="simplified"] * {
   box-shadow: none !important;
   text-shadow: none !important;
 }
 
-[data-mode="simplified"] .site-badge {
+[data-modes~="simplified"] .site-badge {
   display: none !important;
 }
 
-[data-mode="simplified"] .score-badge {
+[data-modes~="simplified"] .score-badge {
   border-radius: 8px !important;
   width: auto !important;
   min-width: 110px !important;
@@ -281,12 +281,12 @@ body {
   padding: 0.75rem 1.25rem !important;
 }
 
-[data-mode="simplified"] .score-number {
+[data-modes~="simplified"] .score-number {
   font-size: 2.2rem !important;
 }
 
 /* Simple plain buttons: large, high contrast, clear touch targets */
-[data-mode="simplified"] .btn {
+[data-modes~="simplified"] .btn {
   min-height: 52px !important;
   font-size: 1.2rem !important;
   font-weight: 700 !important;
@@ -295,59 +295,59 @@ body {
   border-width: 2px !important;
 }
 
-[data-mode="simplified"] .form-input,
-[data-mode="simplified"] .form-textarea,
-[data-mode="simplified"] .form-select {
+[data-modes~="simplified"] .form-input,
+[data-modes~="simplified"] .form-textarea,
+[data-modes~="simplified"] .form-select {
   font-size: 1.2rem !important;
   padding: 1rem !important;
   border-width: 2px !important;
   border-radius: 6px !important;
 }
 
-[data-mode="simplified"] .form-label {
+[data-modes~="simplified"] .form-label {
   font-size: 1.25rem !important;
   margin-bottom: 0.5rem !important;
 }
 
-[data-mode="simplified"] .form-group {
+[data-modes~="simplified"] .form-group {
   margin-bottom: 2rem !important;
 }
 
-[data-mode="simplified"] .button-row {
+[data-modes~="simplified"] .button-row {
   gap: 1.25rem !important;
   margin-top: 1.5rem !important;
 }
 
-[data-mode="simplified"] .checkbox-container {
+[data-modes~="simplified"] .checkbox-container {
   font-size: 1.2rem !important;
   gap: 1rem !important;
   padding: 0.75rem 0 !important;
 }
 
-[data-mode="simplified"] .checkbox-container input[type="checkbox"] {
+[data-modes~="simplified"] .checkbox-container input[type="checkbox"] {
   width: 1.6rem !important;
   height: 1.6rem !important;
 }
 
 /* Hide non-essential content such as the footer and secondary text */
-[data-mode="simplified"] .site-footer {
+[data-modes~="simplified"] .site-footer {
   display: none !important;
 }
 
-[data-mode="simplified"] .site-description {
+[data-modes~="simplified"] .site-description {
   display: none !important;
 }
 
-[data-mode="simplified"] .section-subtitle {
+[data-modes~="simplified"] .section-subtitle {
   display: none !important;
 }
 
-[data-mode="simplified"] .form-help {
+[data-modes~="simplified"] .form-help {
   display: none !important;
 }
 
 /* In simplified mode, hide the default alert notice since full mode is active */
-[data-mode="simplified"] .alert-box.info {
+[data-modes~="simplified"] .alert-box.info {
   display: none !important;
 }
 

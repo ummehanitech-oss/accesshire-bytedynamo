@@ -4,6 +4,10 @@ import { useMode } from '../context/ModeContext.jsx';
 export default function Header() {
   const { modeInfo, openModeSelect } = useMode();
 
+  const activeNames = modeInfo && modeInfo.length > 0
+    ? modeInfo.map((m) => m.display).join(', ')
+    : '';
+
   return (
     <header className="site-header" role="banner" aria-label="AccessHire Header">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
@@ -11,7 +15,7 @@ export default function Header() {
           Job applications made accessible
         </span>
 
-        {modeInfo && (
+        {activeNames && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <span
               style={{
@@ -24,14 +28,14 @@ export default function Header() {
                 borderRadius: 'var(--radius-sm)'
               }}
             >
-              Mode: {modeInfo.display}
+              {modeInfo.length === 1 ? `Mode: ${activeNames}` : `Modes: ${activeNames}`}
             </span>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={openModeSelect}
               style={{ minHeight: '34px', padding: '0.35rem 0.75rem', fontSize: '0.85rem' }}
-              aria-label={`Change current accessibility mode. Active: ${modeInfo.display}`}
+              aria-label={`Change current accessibility modes. Active: ${activeNames}`}
             >
               Change mode
             </button>

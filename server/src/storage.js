@@ -5,36 +5,64 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Data directory located at server/data
-const DATA_DIR = path.resolve(__dirname, '..', 'data');
-const PROFILE_FILE = path.join(DATA_DIR, 'profile.json');
-const APPLICATIONS_FILE = path.join(DATA_DIR, 'applications.json');
+// Data directory helper: allows override via ACCESSHIRE_DATA_DIR for isolated testing
+export function getDataDir() {
+  return process.env.ACCESSHIRE_DATA_DIR
+    ? path.resolve(process.env.ACCESSHIRE_DATA_DIR)
+    : path.resolve(__dirname, '..', 'data');
+}
 
-// Default candidate profile structure
+export function getProfilePath() {
+  return path.join(getDataDir(), 'profile.json');
+}
+
+export function getApplicationsPath() {
+  return path.join(getDataDir(), 'applications.json');
+}
+
+import {
+  validateAndSanitizeProfile,
+  VALID_ACCESSIBILITY_MODES,
+  ADZUNA_COUNTRIES
+} from './profileSchema.js';
+
+export { VALID_ACCESSIBILITY_MODES, ADZUNA_COUNTRIES };
+
+// Export DATA_DIR for compatibility
+export const DATA_DIR = getDataDir();
+
+// Default candidate profile structure (all empty values, country: 'in')
 export const DEFAULT_PROFILE = {
-  fullName: 'Alex Taylor',
-  email: 'alex.taylor@example.com',
-  skills: ['JavaScript', 'React', 'HTML', 'CSS', 'Communication', 'Problem Solving'],
-  yearsExperience: 2,
-  education: 'Associate Degree / Self-Taught',
-  summary: 'Frontend developer passionate about building clean, accessible web interfaces.',
-  accessibilityPreference: '' // "voice" | "keyboard" | "screen-reader" | "simplified" | ""
+  fullName: '',
+  email: '',
+  phone: '',
+  location: '',
+  country: 'in',
+  links: { linkedin: '', github: '', portfolio: '', other: [] },
+  summary: '',
+  skills: [],
+  yearsExperience: 0,
+  experience: [],
+  projects: [],
+  educationEntries: [],
+  education: '',
+  certifications: [],
+  languages: [],
+  accessibilityModes: [],
+  accessibilityPreference: ''
 };
 
-// Valid accessibility preferences accepted by AccessHire
+// Valid accessibility preferences accepted by AccessHire (legacy single mode)
 export const VALID_ACCESSIBILITY_PREFERENCES = [
-  'voice',
-  'keyboard',
-  'screen-reader',
-  'simplified',
+  ...VALID_ACCESSIBILITY_MODES,
   ''
 ];
 
 /**
- * Ensure the server/data directory exists
+ * Ensure the target data directory exists
  */
 async function ensureDataDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(getDataDir(), { recursive: true });
 }
 
 /**
@@ -63,35 +91,19 @@ async function atomicWriteJson(filePath, data) {
 
 /**
  * Read and return the candidate profile.
- * Falls back to DEFAULT_PROFILE if file is missing or invalid.
+ * When fields are missing or empty, returns empty values (never invents or substitutes sample data).
+ * If profile.json is missing, creates it with empty values and returns DEFAULT_PROFILE.
+ * Runs through validateAndSanitizeProfile to apply migrations (e.g. legacy education to educationEntries).
  */
 export async function getProfile() {
   try {
     await ensureDataDir();
-    const content = await fs.readFile(PROFILE_FILE, 'utf-8');
+    const content = await fs.readFile(getProfilePath(), 'utf-8');
     const parsed = JSON.parse(content);
-
-    // Normalize in case older profile format had different field names
-    return {
-      fullName: parsed.fullName || parsed.name || DEFAULT_PROFILE.fullName,
-      email: parsed.email || DEFAULT_PROFILE.email,
-      skills: Array.isArray(parsed.skills)
-        ? parsed.skills
-        : (typeof parsed.skills === 'string'
-            ? parsed.skills.split(',').map(s => s.trim()).filter(Boolean)
-            : DEFAULT_PROFILE.skills),
-      yearsExperience: typeof parsed.yearsExperience === 'number'
-        ? parsed.yearsExperience
-        : (typeof parsed.experience === 'number' ? parsed.experience : DEFAULT_PROFILE.yearsExperience),
-      education: parsed.education || DEFAULT_PROFILE.education,
-      summary: parsed.summary || parsed.experience || DEFAULT_PROFILE.summary,
-      accessibilityPreference: VALID_ACCESSIBILITY_PREFERENCES.includes(parsed.accessibilityPreference)
-        ? parsed.accessibilityPreference
-        : DEFAULT_PROFILE.accessibilityPreference
-    };
+    return validateAndSanitizeProfile(parsed, DEFAULT_PROFILE);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      await saveProfile(DEFAULT_PROFILE);
+      await atomicWriteJson(getProfilePath(), DEFAULT_PROFILE);
       return { ...DEFAULT_PROFILE };
     }
     console.warn('Warning: Could not read profile.json, using default profile.');
@@ -101,45 +113,13 @@ export async function getProfile() {
 
 /**
  * Validate, sanitize, and save the candidate profile.
- * Merges partial updates with existing profile so specific field updates (e.g. accessibilityPreference)
+ * Merges partial updates with existing profile so specific field updates (e.g. accessibilityModes)
  * do not erase existing fields.
  */
-export async function saveProfile(input) {
+export async function saveProfile(input = {}) {
   const existing = await getProfile();
-
-  const profile = {
-    fullName: input.fullName !== undefined
-      ? (typeof input.fullName === 'string' ? input.fullName.trim() : '')
-      : existing.fullName,
-    email: input.email !== undefined
-      ? (typeof input.email === 'string' ? input.email.trim() : '')
-      : existing.email,
-    skills: input.skills !== undefined
-      ? (Array.isArray(input.skills)
-          ? input.skills.map(s => String(s).trim()).filter(Boolean)
-          : (typeof input.skills === 'string'
-              ? input.skills.split(',').map(s => s.trim()).filter(Boolean)
-              : []))
-      : existing.skills,
-    yearsExperience: input.yearsExperience !== undefined
-      ? (Number.isFinite(Number(input.yearsExperience))
-          ? Math.max(0, Math.min(60, Number(input.yearsExperience)))
-          : 0)
-      : existing.yearsExperience,
-    education: input.education !== undefined
-      ? (typeof input.education === 'string' ? input.education.trim() : '')
-      : existing.education,
-    summary: input.summary !== undefined
-      ? (typeof input.summary === 'string' ? input.summary.trim() : '')
-      : existing.summary,
-    accessibilityPreference: input.accessibilityPreference !== undefined
-      ? (VALID_ACCESSIBILITY_PREFERENCES.includes(input.accessibilityPreference)
-          ? input.accessibilityPreference
-          : '')
-      : existing.accessibilityPreference
-  };
-
-  await atomicWriteJson(PROFILE_FILE, profile);
+  const profile = validateAndSanitizeProfile(input, existing);
+  await atomicWriteJson(getProfilePath(), profile);
   return profile;
 }
 
@@ -149,12 +129,12 @@ export async function saveProfile(input) {
 export async function getApplications() {
   try {
     await ensureDataDir();
-    const content = await fs.readFile(APPLICATIONS_FILE, 'utf-8');
+    const content = await fs.readFile(getApplicationsPath(), 'utf-8');
     const parsed = JSON.parse(content);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     if (error.code === 'ENOENT') {
-      await atomicWriteJson(APPLICATIONS_FILE, []);
+      await atomicWriteJson(getApplicationsPath(), []);
       return [];
     }
     console.warn('Warning: Could not read applications.json, returning empty list.');
@@ -200,7 +180,7 @@ export async function saveApplication(analysisData) {
 
   // Prepend newest first and cap at 50 entries
   const updated = [newApp, ...all].slice(0, 50);
-  await atomicWriteJson(APPLICATIONS_FILE, updated);
+  await atomicWriteJson(getApplicationsPath(), updated);
   return newApp;
 }
 
@@ -222,7 +202,7 @@ export async function updateApplicationProgress(id, completedSteps) {
   all[index].completedSteps = steps;
   all[index].updatedAt = new Date().toISOString();
 
-  await atomicWriteJson(APPLICATIONS_FILE, all);
+  await atomicWriteJson(getApplicationsPath(), all);
   return all[index];
 }
 
@@ -235,6 +215,6 @@ export async function deleteApplication(id) {
   if (filtered.length === all.length) {
     return false;
   }
-  await atomicWriteJson(APPLICATIONS_FILE, filtered);
+  await atomicWriteJson(getApplicationsPath(), filtered);
   return true;
 }
