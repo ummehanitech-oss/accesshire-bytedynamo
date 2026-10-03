@@ -69,6 +69,16 @@ const handleSaveProfile = async (req, res, next) => {
       sanitized.education = String(body.education || '').trim();
     }
 
+    // Phone if provided
+    if (body.phone !== undefined) {
+      sanitized.phone = String(body.phone || '').trim();
+    }
+
+    // Country if provided
+    if (body.country !== undefined) {
+      sanitized.country = String(body.country || '').trim().toLowerCase();
+    }
+
     // Summary if provided
     if (body.summary !== undefined || body.experience !== undefined) {
       sanitized.summary = String(body.summary ?? body.experience ?? '').trim();

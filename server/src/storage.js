@@ -5,15 +5,29 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Data directory located at server/data
-const DATA_DIR = path.resolve(__dirname, '..', 'data');
-const PROFILE_FILE = path.join(DATA_DIR, 'profile.json');
-const APPLICATIONS_FILE = path.join(DATA_DIR, 'applications.json');
+// Data directory helper: allows override via ACCESSHIRE_DATA_DIR for isolated testing
+export function getDataDir() {
+  return process.env.ACCESSHIRE_DATA_DIR
+    ? path.resolve(process.env.ACCESSHIRE_DATA_DIR)
+    : path.resolve(__dirname, '..', 'data');
+}
 
-// Default candidate profile structure (starts empty for new installs)
+export function getProfilePath() {
+  return path.join(getDataDir(), 'profile.json');
+}
+
+export function getApplicationsPath() {
+  return path.join(getDataDir(), 'applications.json');
+}
+
+// Export DATA_DIR for compatibility
+export const DATA_DIR = getDataDir();
+
+// Default candidate profile structure (all empty values, country: 'in')
 export const DEFAULT_PROFILE = {
   fullName: '',
   email: '',
+  phone: '',
   skills: [],
   yearsExperience: 0,
   education: '',
@@ -38,10 +52,10 @@ export const VALID_ACCESSIBILITY_PREFERENCES = [
 ];
 
 /**
- * Ensure the server/data directory exists
+ * Ensure the target data directory exists
  */
 async function ensureDataDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(getDataDir(), { recursive: true });
 }
 
 /**
@@ -70,12 +84,13 @@ async function atomicWriteJson(filePath, data) {
 
 /**
  * Read and return the candidate profile.
- * Falls back to DEFAULT_PROFILE if file is missing or invalid.
+ * When fields are missing or empty, returns empty values (never invents or substitutes sample data).
+ * If profile.json is missing, creates it with empty values and returns DEFAULT_PROFILE.
  */
 export async function getProfile() {
   try {
     await ensureDataDir();
-    const content = await fs.readFile(PROFILE_FILE, 'utf-8');
+    const content = await fs.readFile(getProfilePath(), 'utf-8');
     const parsed = JSON.parse(content);
 
     // Normalize accessibility modes and legacy preference
@@ -89,26 +104,51 @@ export async function getProfile() {
     }
     const accessibilityPreference = accessibilityModes[0] || '';
 
-    // Normalize in case older profile format had different field names
+    // Handle string or array skills
+    let skills = [];
+    if (Array.isArray(parsed.skills)) {
+      skills = parsed.skills.map(s => String(s).trim()).filter(Boolean);
+    } else if (typeof parsed.skills === 'string') {
+      skills = parsed.skills.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    // Handle numeric yearsExperience
+    let yearsExperience = 0;
+    if (typeof parsed.yearsExperience === 'number' && Number.isFinite(parsed.yearsExperience)) {
+      yearsExperience = Math.max(0, Math.min(60, parsed.yearsExperience));
+    } else if (typeof parsed.experience === 'number' && Number.isFinite(parsed.experience)) {
+      yearsExperience = Math.max(0, Math.min(60, parsed.experience));
+    }
+
+    const fullName = typeof parsed.fullName === 'string'
+      ? parsed.fullName
+      : (typeof parsed.name === 'string' ? parsed.name : '');
+
+    const email = typeof parsed.email === 'string' ? parsed.email : '';
+    const phone = typeof parsed.phone === 'string' ? parsed.phone : '';
+    const education = typeof parsed.education === 'string' ? parsed.education : '';
+    const summary = typeof parsed.summary === 'string'
+      ? parsed.summary
+      : (typeof parsed.experience === 'string' ? parsed.experience : '');
+    const country = typeof parsed.country === 'string' && parsed.country.trim()
+      ? parsed.country.trim().toLowerCase()
+      : 'in';
+
     return {
-      fullName: parsed.fullName || parsed.name || DEFAULT_PROFILE.fullName,
-      email: parsed.email || DEFAULT_PROFILE.email,
-      skills: Array.isArray(parsed.skills)
-        ? parsed.skills
-        : (typeof parsed.skills === 'string'
-            ? parsed.skills.split(',').map(s => s.trim()).filter(Boolean)
-            : DEFAULT_PROFILE.skills),
-      yearsExperience: typeof parsed.yearsExperience === 'number'
-        ? parsed.yearsExperience
-        : (typeof parsed.experience === 'number' ? parsed.experience : DEFAULT_PROFILE.yearsExperience),
-      education: parsed.education || DEFAULT_PROFILE.education,
-      summary: parsed.summary || parsed.experience || DEFAULT_PROFILE.summary,
+      fullName,
+      email,
+      phone,
+      skills,
+      yearsExperience,
+      education,
+      summary,
+      country,
       accessibilityModes,
       accessibilityPreference
     };
   } catch (error) {
     if (error.code === 'ENOENT') {
-      await saveProfile(DEFAULT_PROFILE);
+      await atomicWriteJson(getProfilePath(), DEFAULT_PROFILE);
       return { ...DEFAULT_PROFILE };
     }
     console.warn('Warning: Could not read profile.json, using default profile.');
@@ -121,7 +161,7 @@ export async function getProfile() {
  * Merges partial updates with existing profile so specific field updates (e.g. accessibilityModes)
  * do not erase existing fields.
  */
-export async function saveProfile(input) {
+export async function saveProfile(input = {}) {
   const existing = await getProfile();
 
   // Handle accessibilityModes / accessibilityPreference
@@ -147,33 +187,39 @@ export async function saveProfile(input) {
   const profile = {
     fullName: input.fullName !== undefined
       ? (typeof input.fullName === 'string' ? input.fullName.trim() : '')
-      : existing.fullName,
+      : (typeof existing.fullName === 'string' ? existing.fullName : ''),
     email: input.email !== undefined
       ? (typeof input.email === 'string' ? input.email.trim() : '')
-      : existing.email,
+      : (typeof existing.email === 'string' ? existing.email : ''),
+    phone: input.phone !== undefined
+      ? (typeof input.phone === 'string' ? input.phone.trim() : '')
+      : (typeof existing.phone === 'string' ? existing.phone : ''),
     skills: input.skills !== undefined
       ? (Array.isArray(input.skills)
           ? input.skills.map(s => String(s).trim()).filter(Boolean)
           : (typeof input.skills === 'string'
               ? input.skills.split(',').map(s => s.trim()).filter(Boolean)
               : []))
-      : existing.skills,
+      : (Array.isArray(existing.skills) ? existing.skills : []),
     yearsExperience: input.yearsExperience !== undefined
       ? (Number.isFinite(Number(input.yearsExperience))
           ? Math.max(0, Math.min(60, Number(input.yearsExperience)))
           : 0)
-      : existing.yearsExperience,
+      : (typeof existing.yearsExperience === 'number' ? existing.yearsExperience : 0),
     education: input.education !== undefined
       ? (typeof input.education === 'string' ? input.education.trim() : '')
-      : existing.education,
+      : (typeof existing.education === 'string' ? existing.education : ''),
     summary: input.summary !== undefined
       ? (typeof input.summary === 'string' ? input.summary.trim() : '')
-      : existing.summary,
+      : (typeof existing.summary === 'string' ? existing.summary : ''),
+    country: input.country !== undefined
+      ? (typeof input.country === 'string' ? input.country.trim().toLowerCase() : 'in')
+      : (typeof existing.country === 'string' ? existing.country : 'in'),
     accessibilityModes,
     accessibilityPreference
   };
 
-  await atomicWriteJson(PROFILE_FILE, profile);
+  await atomicWriteJson(getProfilePath(), profile);
   return profile;
 }
 
@@ -183,12 +229,12 @@ export async function saveProfile(input) {
 export async function getApplications() {
   try {
     await ensureDataDir();
-    const content = await fs.readFile(APPLICATIONS_FILE, 'utf-8');
+    const content = await fs.readFile(getApplicationsPath(), 'utf-8');
     const parsed = JSON.parse(content);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     if (error.code === 'ENOENT') {
-      await atomicWriteJson(APPLICATIONS_FILE, []);
+      await atomicWriteJson(getApplicationsPath(), []);
       return [];
     }
     console.warn('Warning: Could not read applications.json, returning empty list.');
@@ -234,7 +280,7 @@ export async function saveApplication(analysisData) {
 
   // Prepend newest first and cap at 50 entries
   const updated = [newApp, ...all].slice(0, 50);
-  await atomicWriteJson(APPLICATIONS_FILE, updated);
+  await atomicWriteJson(getApplicationsPath(), updated);
   return newApp;
 }
 
@@ -256,7 +302,7 @@ export async function updateApplicationProgress(id, completedSteps) {
   all[index].completedSteps = steps;
   all[index].updatedAt = new Date().toISOString();
 
-  await atomicWriteJson(APPLICATIONS_FILE, all);
+  await atomicWriteJson(getApplicationsPath(), all);
   return all[index];
 }
 
@@ -269,6 +315,6 @@ export async function deleteApplication(id) {
   if (filtered.length === all.length) {
     return false;
   }
-  await atomicWriteJson(APPLICATIONS_FILE, filtered);
+  await atomicWriteJson(getApplicationsPath(), filtered);
   return true;
 }

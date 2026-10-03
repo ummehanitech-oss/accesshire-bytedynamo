@@ -303,7 +303,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               className="form-input"
               value={profile.fullName}
               onChange={handleChange}
-              placeholder="e.g. Alex Taylor"
+              placeholder="e.g. Jane Doe"
               required
               aria-required="true"
               aria-invalid={errors.some(e => e.fieldId === 'profile-fullname') ? 'true' : undefined}
@@ -330,7 +330,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               className="form-input"
               value={profile.email}
               onChange={handleChange}
-              placeholder="e.g. alex.taylor@example.com"
+              placeholder="e.g. jane.doe@example.com"
               aria-invalid={errors.some(e => e.fieldId === 'profile-email') ? 'true' : undefined}
               aria-describedby={errors.some(e => e.fieldId === 'profile-email') ? 'email-error email-help' : 'email-help'}
             />

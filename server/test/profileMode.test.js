@@ -1,5 +1,8 @@
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 import {
   VALID_ACCESSIBILITY_MODES,
   DEFAULT_PROFILE,
@@ -8,6 +11,20 @@ import {
 } from '../src/storage.js';
 
 describe('Phase 1: Accessibility Modes Storage & Migration', () => {
+  let tempDir;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'accesshire-test-'));
+    process.env.ACCESSHIRE_DATA_DIR = tempDir;
+  });
+
+  afterEach(async () => {
+    delete process.env.ACCESSHIRE_DATA_DIR;
+    if (tempDir) {
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  });
+
   test('VALID_ACCESSIBILITY_MODES contains all 4 modes', () => {
     assert.deepEqual(VALID_ACCESSIBILITY_MODES, [
       'voice',
