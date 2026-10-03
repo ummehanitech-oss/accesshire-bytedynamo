@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getProfile, updateProfile } from '../api.js';
+import { useMode } from '../context/ModeContext.jsx';
 
 export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profileIncompleteAlert }) {
   const [profile, setProfile] = useState({
@@ -14,9 +15,12 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: '' }
+  const [errors, setErrors] = useState([]); // Form validation errors list
   const [isSavedComplete, setIsSavedComplete] = useState(false);
 
   const continueBtnRef = useRef(null);
+  const errorSummaryRef = useRef(null);
+  const { announce } = useMode();
 
   // Load profile on mount
   useEffect(() => {
@@ -58,6 +62,13 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
     }
   }, [isSavedComplete, status]);
 
+  // When form validation fails, move focus to the error summary
+  useEffect(() => {
+    if (errors.length > 0 && errorSummaryRef.current) {
+      errorSummaryRef.current.focus();
+    }
+  }, [errors]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProfile(prev => ({
@@ -68,14 +79,45 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setStatus(null);
+
+    // Client-side validation for accessible error summary
+    const validationErrors = [];
+    if (!profile.fullName.trim()) {
+      validationErrors.push({
+        fieldId: 'profile-fullname',
+        message: 'Full name is required. Please enter your name.'
+      });
+    }
 
     // Convert comma-separated string to string array
     const skillsArray = profile.skillsString
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
+
+    if (skillsArray.length === 0) {
+      validationErrors.push({
+        fieldId: 'profile-skills',
+        message: 'At least one skill is required. Please enter your skills separated by commas.'
+      });
+    }
+
+    if (profile.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim())) {
+      validationErrors.push({
+        fieldId: 'profile-email',
+        message: 'Email address must be in a valid format (e.g. name@example.com).'
+      });
+    }
+
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      announce(`Form submission failed with ${validationErrors.length} error${validationErrors.length > 1 ? 's' : ''}.`);
+      return;
+    }
+
+    setErrors([]);
+    setSaving(true);
 
     const payload = {
       fullName: profile.fullName.trim(),
@@ -101,14 +143,19 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
           : 'Profile saved. Please add your full name and at least one skill to analyze jobs.'
       });
 
+      announce('Profile saved successfully.');
+
       if (onProfileSaved) {
         onProfileSaved(savedProfile);
       }
     } catch (err) {
+      const errorMsg = err.message || 'Failed to update profile.';
       setStatus({
         type: 'error',
-        message: err.message || 'Failed to update profile.'
+        message: errorMsg
       });
+      setErrors([{ fieldId: 'profile-fullname', message: errorMsg }]);
+      announce(`Profile save failed: ${errorMsg}`);
     } finally {
       setSaving(false);
     }
@@ -194,6 +241,50 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
         </div>
       )}
 
+      {/* Form Error Summary: receives focus on failed submit */}
+      {errors.length > 0 && (
+        <div
+          ref={errorSummaryRef}
+          tabIndex={-1}
+          role="alert"
+          aria-labelledby="profile-error-summary-title"
+          className="alert-box error"
+          style={{
+            outline: '3px solid var(--color-danger)',
+            outlineOffset: '2px',
+            display: 'block',
+            marginBottom: '1.5rem'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <span aria-hidden="true">&#9888;</span>
+            <h3 id="profile-error-summary-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+              There is a problem ({errors.length} {errors.length === 1 ? 'error' : 'errors'})
+            </h3>
+          </div>
+          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>
+            Please review and correct the errors below, or select a link to jump directly to the field:
+          </p>
+          <ul style={{ paddingLeft: '1.5rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {errors.map((err, idx) => (
+              <li key={idx}>
+                <a
+                  href={`#${err.fieldId}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.getElementById(err.fieldId);
+                    if (el) el.focus();
+                  }}
+                  style={{ color: 'var(--color-danger)', fontWeight: 700, textDecoration: 'underline' }}
+                >
+                  {err.message}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} noValidate>
         <fieldset disabled={saving}>
           <legend>Personal & Contact Details</legend>
@@ -215,8 +306,14 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               placeholder="e.g. Alex Taylor"
               required
               aria-required="true"
-              aria-describedby="name-help"
+              aria-invalid={errors.some(e => e.fieldId === 'profile-fullname') ? 'true' : undefined}
+              aria-describedby={errors.some(e => e.fieldId === 'profile-fullname') ? 'fullname-error name-help' : 'name-help'}
             />
+            {errors.find(e => e.fieldId === 'profile-fullname') && (
+              <p id="fullname-error" style={{ color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem', marginTop: '0.35rem' }}>
+                {errors.find(e => e.fieldId === 'profile-fullname').message}
+              </p>
+            )}
           </div>
 
           <div className="form-group">
@@ -234,8 +331,14 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               value={profile.email}
               onChange={handleChange}
               placeholder="e.g. alex.taylor@example.com"
-              aria-describedby="email-help"
+              aria-invalid={errors.some(e => e.fieldId === 'profile-email') ? 'true' : undefined}
+              aria-describedby={errors.some(e => e.fieldId === 'profile-email') ? 'email-error email-help' : 'email-help'}
             />
+            {errors.find(e => e.fieldId === 'profile-email') && (
+              <p id="email-error" style={{ color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem', marginTop: '0.35rem' }}>
+                {errors.find(e => e.fieldId === 'profile-email').message}
+              </p>
+            )}
           </div>
         </fieldset>
 
@@ -259,8 +362,14 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               placeholder="e.g. React, JavaScript, HTML, CSS, Communication, Problem Solving"
               required
               aria-required="true"
-              aria-describedby="skills-help"
+              aria-invalid={errors.some(e => e.fieldId === 'profile-skills') ? 'true' : undefined}
+              aria-describedby={errors.some(e => e.fieldId === 'profile-skills') ? 'skills-error skills-help' : 'skills-help'}
             />
+            {errors.find(e => e.fieldId === 'profile-skills') && (
+              <p id="skills-error" style={{ color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.9rem', marginTop: '0.35rem' }}>
+                {errors.find(e => e.fieldId === 'profile-skills').message}
+              </p>
+            )}
           </div>
 
           <div className="form-group">

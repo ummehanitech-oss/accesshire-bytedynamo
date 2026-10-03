@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { getApplications, getApplicationById, deleteApplication } from '../api.js';
+import { useMode } from '../context/ModeContext.jsx';
 
 export default function SavedJobs({ onSelectJob }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: '' }
+  const { announce } = useMode();
 
   // Load saved jobs on mount
   const loadSavedJobs = async () => {
     try {
       setLoading(true);
       const data = await getApplications();
-      setJobs(Array.isArray(data) ? data : []);
+      const jobList = Array.isArray(data) ? data : [];
+      setJobs(jobList);
+      if (announce) {
+        announce(`Loaded ${jobList.length} saved job applications.`);
+      }
     } catch (err) {
       setStatus({
         type: 'error',
         message: 'Could not load saved job applications.'
       });
+      if (announce) {
+        announce('Could not load saved job applications.');
+      }
     } finally {
       setLoading(false);
     }
@@ -38,6 +47,9 @@ export default function SavedJobs({ onSelectJob }) {
         type: 'error',
         message: err.message || 'Could not load job details.'
       });
+      if (announce) {
+        announce(err.message || 'Could not load job details.');
+      }
     }
   };
 
@@ -53,11 +65,17 @@ export default function SavedJobs({ onSelectJob }) {
         type: 'success',
         message: `Removed "${jobTitle}" from your saved jobs.`
       });
+      if (announce) {
+        announce(`Removed "${jobTitle}" from your saved jobs.`);
+      }
     } catch (err) {
       setStatus({
         type: 'error',
         message: err.message || 'Failed to remove job.'
       });
+      if (announce) {
+        announce(`Failed to remove job: ${err.message || 'Server error'}`);
+      }
     }
   };
 
@@ -119,6 +137,7 @@ export default function SavedJobs({ onSelectJob }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="source-link"
+                        aria-label={`View original job page for ${job.jobTitle} (opens in new tab)`}
                       >
                         <span>View original job page</span>
                         <span aria-hidden="true">&#8599;</span>
@@ -133,7 +152,7 @@ export default function SavedJobs({ onSelectJob }) {
                     className="btn btn-primary"
                     onClick={() => handleOpen(job.id)}
                     aria-label={`Open analysis for ${job.jobTitle}`}
-                    style={{ minHeight: '40px', padding: '0.5rem 1rem' }}
+                    style={{ minHeight: '44px', padding: '0.5rem 1rem' }}
                   >
                     Open Analysis
                   </button>
@@ -142,8 +161,8 @@ export default function SavedJobs({ onSelectJob }) {
                     type="button"
                     className="btn btn-danger"
                     onClick={() => handleDelete(job.id, job.jobTitle)}
-                    aria-label={`Delete ${job.jobTitle}`}
-                    style={{ minHeight: '40px', padding: '0.5rem 0.75rem' }}
+                    aria-label={`Delete ${job.jobTitle} from saved jobs`}
+                    style={{ minHeight: '44px', padding: '0.5rem 0.75rem' }}
                   >
                     Delete
                   </button>

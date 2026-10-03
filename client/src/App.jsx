@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header.jsx';
 import ModeSelect from './components/ModeSelect.jsx';
 import KeyboardTips from './components/KeyboardTips.jsx';
-import ModeNotice from './components/ModeNotice.jsx';
+import ShortcutsHelp from './components/ShortcutsHelp.jsx';
 import VoiceControls from './components/VoiceControls.jsx';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 import JobInput from './components/JobInput.jsx';
 import Results from './components/Results.jsx';
 import ProfileForm from './components/ProfileForm.jsx';
@@ -35,6 +36,15 @@ function AppContent() {
 
   // Ref to the view heading for accessible focus management
   const viewHeadingRef = useRef(null);
+
+  // Global keyboard shortcuts: "g p", "g a", "g s", "?", "Esc"
+  const { isHelpOpen, openHelp, closeHelp, openerElementRef } = useKeyboardShortcuts({
+    onNavigate: (view) => {
+      if (view === 'profile') handleNavigateToProfile();
+      else if (view === 'analyze') handleNavigateToAnalyze();
+      else if (view === 'saved') handleNavigateToSaved();
+    }
+  });
 
   // Load profile on initial mount to know completeness
   useEffect(() => {
@@ -178,11 +188,9 @@ function AppContent() {
       </a>
 
       {/* Screen reader live region for announcements */}
-      {mode === 'screen-reader' && (
-        <div className="sr-only" aria-live="polite" aria-atomic="true">
-          {announcement}
-        </div>
-      )}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
 
       {/* Accessible Display Settings Panel */}
       <DisplaySettings />
@@ -202,13 +210,11 @@ function AppContent() {
       ) : (
         <>
           {/* Baseline Mode Notifications */}
-          {mode === 'keyboard' && <KeyboardTips />}
-          {(mode === 'voice' || mode === 'simplified') && (
-            <ModeNotice modeTitle={modeInfo ? modeInfo.title : 'Selected Mode'} />
-          )}
+          {mode === 'keyboard' && <KeyboardTips onOpenShortcutsHelp={openHelp} />}
+          <VoiceControls />
 
           {/* Navigation order: "My profile", "Analyze a job", "Saved jobs" */}
-          <nav className="main-nav" aria-label="Main Navigation">
+          <nav className="main-nav" role="navigation" aria-label="Main Navigation">
             <ul className="nav-list">
               <li>
                 <button
@@ -244,7 +250,7 @@ function AppContent() {
           </nav>
 
           {/* Main Content Landmark */}
-          <main id="main-content" tabIndex={-1}>
+          <main id="main-content" role="main" aria-label="Main Content" tabIndex={-1}>
             {/* VIEW 1: MY PROFILE */}
             {activeView === 'profile' && (
               <div>
@@ -316,7 +322,7 @@ function AppContent() {
       )}
 
       {/* Footer Landmark */}
-      <footer className="site-footer" role="contentinfo">
+      <footer className="site-footer" role="contentinfo" aria-label="Site Footer">
         <p>
           <strong>AccessHire</strong> &bull; Job applications made accessible
         </p>
@@ -324,6 +330,12 @@ function AppContent() {
           Accessible Assistive Technology designed with plain English, semantic markup, and WCAG AA standards.
         </p>
       </footer>
+      {/* Keyboard Shortcuts Help Dialog (role="dialog", aria-modal, focus trap) */}
+      <ShortcutsHelp
+        isOpen={isHelpOpen}
+        onClose={closeHelp}
+        openerRef={openerElementRef}
+      />
     </div>
   );
 }

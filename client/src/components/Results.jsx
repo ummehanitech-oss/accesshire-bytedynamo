@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateApplicationProgress } from '../api.js';
+import { useMode } from '../context/ModeContext.jsx';
 import SimplifiedResults from './SimplifiedResults.jsx';
 
 /**
@@ -143,6 +144,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
   const [completedSteps, setCompletedSteps] = useState(new Set(initialCompleted));
   const [viewMode, setViewMode] = useState('wizard'); // 'wizard' | 'checklist'
   const [saveStatus, setSaveStatus] = useState('');
+  const { announce } = useMode();
 
   useEffect(() => {
     setCompletedSteps(new Set(initialCompleted));
@@ -157,6 +159,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
   // Toggle completion of a step
   const handleToggleStep = async (stepIdx) => {
     const updated = new Set(completedSteps);
+    const willBeDone = !updated.has(stepIdx);
     if (updated.has(stepIdx)) {
       updated.delete(stepIdx);
     } else {
@@ -170,9 +173,15 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
         setSaveStatus('Saving progress...');
         await updateApplicationProgress(applicationId, Array.from(updated));
         setSaveStatus('Progress saved.');
+        if (announce) {
+          announce(`Progress saved. Step ${stepIdx + 1} marked ${willBeDone ? 'done' : 'incomplete'}.`);
+        }
       } catch (err) {
         console.warn('Failed to save step progress:', err.message);
         setSaveStatus('Could not save progress to server.');
+        if (announce) {
+          announce('Could not save progress to server.');
+        }
       }
     }
   };
@@ -188,7 +197,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
             type="button"
             className={`btn ${viewMode === 'wizard' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('wizard')}
-            style={{ minHeight: '36px', padding: '0.4rem 0.9rem', fontSize: '0.9rem' }}
+            style={{ minHeight: '44px', padding: '0.5rem 1rem', fontSize: '0.9rem' }}
           >
             Step-by-Step View
           </button>
@@ -196,7 +205,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
             type="button"
             className={`btn ${viewMode === 'checklist' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('checklist')}
-            style={{ minHeight: '36px', padding: '0.4rem 0.9rem', fontSize: '0.9rem' }}
+            style={{ minHeight: '44px', padding: '0.5rem 1rem', fontSize: '0.9rem' }}
           >
             Full Checklist View
           </button>
@@ -232,6 +241,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               className="btn btn-secondary"
               onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
               disabled={currentStepIndex === 0}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               &larr; Previous Step
             </button>
@@ -241,6 +251,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               className="btn btn-primary"
               onClick={() => setCurrentStepIndex((prev) => Math.min(totalSteps - 1, prev + 1))}
               disabled={currentStepIndex === totalSteps - 1}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Next Step &rarr;
             </button>
@@ -339,6 +350,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               target="_blank"
               rel="noopener noreferrer"
               className="source-link"
+              aria-label={`View original job page for ${jobTitle || 'job'} (opens in new tab)`}
             >
               <span>View original job page</span>
               <span aria-hidden="true">&#8599;</span>
@@ -351,6 +363,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
             type="button"
             className="btn btn-secondary"
             onClick={onNewAnalysis}
+            style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
           >
             Analyze Another Job
           </button>
@@ -401,6 +414,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-primary"
               onClick={onEditProfile}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Edit my profile
             </button>
@@ -408,6 +422,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-secondary"
               onClick={onNewAnalysis}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Analyze another job
             </button>
@@ -434,6 +449,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-primary"
               onClick={onEditProfile}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Edit my profile
             </button>
@@ -441,6 +457,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               type="button"
               className="btn btn-secondary"
               onClick={onNewAnalysis}
+              style={{ minHeight: '44px', padding: '0.6rem 1.25rem' }}
             >
               Analyze another job
             </button>
