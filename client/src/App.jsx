@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header.jsx';
 import ModeSelect from './components/ModeSelect.jsx';
 import KeyboardTips from './components/KeyboardTips.jsx';
-import ModeNotice from './components/ModeNotice.jsx';
 import VoiceControls from './components/VoiceControls.jsx';
+import ShortcutsHelp from './components/ShortcutsHelp.jsx';
 import JobInput from './components/JobInput.jsx';
 import Results from './components/Results.jsx';
 import ProfileForm from './components/ProfileForm.jsx';
@@ -11,6 +11,7 @@ import SavedJobs from './components/SavedJobs.jsx';
 import DisplaySettings from './components/DisplaySettings.jsx';
 import { ModeProvider, useMode } from './context/ModeContext.jsx';
 import { analyzeJobText, analyzeJobFile, analyzeJobUrl, getProfile } from './api.js';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 
 // Helper to evaluate profile completeness (fullName filled and at least 1 skill)
 function checkProfileComplete(prof) {
@@ -21,7 +22,7 @@ function checkProfileComplete(prof) {
 }
 
 function AppContent() {
-  const { mode, modeInfo, isSelectingMode, announce, announcement } = useMode();
+  const { mode, isSelectingMode, announce, announcement } = useMode();
 
   // Navigation order: "My profile" -> "Analyze a job" -> "Saved jobs"
   const [activeView, setActiveView] = useState('profile');
@@ -33,6 +34,10 @@ function AppContent() {
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [profileIncompleteAlert, setProfileIncompleteAlert] = useState(false);
 
+  // State for Keyboard Shortcuts Help dialog
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const helpOpenerRef = useRef(null);
+
   // Ref to the view heading for accessible focus management
   const viewHeadingRef = useRef(null);
 
@@ -42,7 +47,7 @@ function AppContent() {
       try {
         const data = await getProfile();
         setCandidateProfile(data);
-      } catch (err) {
+      } catch (_err) {
         // Silently catch network errors on initial profile load
       }
     }
@@ -75,7 +80,7 @@ function AppContent() {
       };
       announce(`You are on ${pageNames[activeView] || activeView}`);
     }
-  }, [activeView, isSelectingMode, currentAnalysis]);
+  }, [activeView, isSelectingMode, currentAnalysis, announce]);
 
   // Navigate to Analyze view with completeness guard
   const handleNavigateToAnalyze = () => {
@@ -102,15 +107,42 @@ function AppContent() {
     setActiveView('saved');
   };
 
+  // Open and close shortcuts help dialog with focus restoration
+  const handleOpenHelp = () => {
+    helpOpenerRef.current = document.activeElement;
+    setIsHelpOpen(true);
+  };
+
+  const handleCloseHelp = () => {
+    setIsHelpOpen(false);
+  };
+
+  // Global keyboard shortcuts hook
+  useKeyboardShortcuts({
+    onNavigate: (targetView) => {
+      if (targetView === 'profile') {
+        handleNavigateToProfile();
+      } else if (targetView === 'analyze') {
+        handleNavigateToAnalyze();
+      } else if (targetView === 'saved') {
+        handleNavigateToSaved();
+      }
+    },
+    onOpenHelp: handleOpenHelp,
+    onCloseHelp: handleCloseHelp,
+    isHelpOpen,
+    enabled: !isSelectingMode
+  });
+
   // Handler for text analysis
   const handleAnalyzeText = async (text) => {
     setLoading(true);
     setLoadingStatus('Analyzing job description with Gemini...');
-    announce('Analyzing job description');
+    announce('Loading: Analyzing job description with Gemini...');
     try {
       const data = await analyzeJobText(text);
       setCurrentAnalysis(data);
-      announce(`Analysis ready for ${data.jobTitle || 'job position'}`);
+      announce(`Results ready for ${data.jobTitle || 'job position'}`);
     } catch (err) {
       announce(`Analysis failed: ${err.message}`);
       throw err;
@@ -124,11 +156,11 @@ function AppContent() {
   const handleAnalyzeFile = async (file) => {
     setLoading(true);
     setLoadingStatus('Reading file and analyzing requirements...');
-    announce('Reading uploaded file');
+    announce('Loading: Reading file and analyzing requirements with Gemini...');
     try {
       const data = await analyzeJobFile(file);
       setCurrentAnalysis(data);
-      announce(`Analysis ready for ${data.jobTitle || 'job position'}`);
+      announce(`Results ready for ${data.jobTitle || 'job position'}`);
     } catch (err) {
       announce(`File analysis failed: ${err.message}`);
       throw err;
@@ -142,11 +174,11 @@ function AppContent() {
   const handleAnalyzeUrl = async (url) => {
     setLoading(true);
     setLoadingStatus('Reading the page and extracting requirements...');
-    announce('Reading job web page');
+    announce('Loading: Reading web page and extracting requirements with Gemini...');
     try {
       const data = await analyzeJobUrl(url);
       setCurrentAnalysis(data);
-      announce(`Analysis ready for ${data.jobTitle || 'job position'}`);
+      announce(`Results ready for ${data.jobTitle || 'job position'}`);
     } catch (err) {
       announce(`URL import failed: ${err.message}`);
       throw err;
@@ -177,22 +209,25 @@ function AppContent() {
         Skip to main content
       </a>
 
-      {/* Screen reader live region for announcements */}
-      {mode === 'screen-reader' && (
-        <div className="sr-only" aria-live="polite" aria-atomic="true">
-          {announcement}
-        </div>
-      )}
+      {/* Screen reader live region for status announcements across the app */}
+      <div
+        className="sr-only"
+        aria-live="polite"
+        aria-atomic="true"
+        id="app-live-announcements"
+      >
+        {announcement}
+      </div>
 
       {/* Accessible Display Settings Panel */}
       <DisplaySettings />
 
-      {/* Site Header */}
+      {/* Site Header Landmark */}
       <Header />
 
       {/* First Screen: Full-page Mode Selection Screen */}
       {isSelectingMode ? (
-        <main id="main-content" tabIndex={-1}>
+        <main id="main-content" aria-label="Accessibility Mode Selection" tabIndex={-1}>
           <ModeSelect
             onCompleted={() => {
               setActiveView('profile');
@@ -201,11 +236,13 @@ function AppContent() {
         </main>
       ) : (
         <>
-          {/* Baseline Mode Notifications */}
-          {mode === 'keyboard' && <KeyboardTips />}
-          {(mode === 'voice' || mode === 'simplified') && (
-            <ModeNotice modeTitle={modeInfo ? modeInfo.title : 'Selected Mode'} />
+          {/* Keyboard Tips when in keyboard navigation mode */}
+          {mode === 'keyboard' && (
+            <KeyboardTips onOpenShortcutsHelp={handleOpenHelp} />
           )}
+
+          {/* Voice controls when in voice assistance mode */}
+          {mode === 'voice' && <VoiceControls />}
 
           {/* Navigation order: "My profile", "Analyze a job", "Saved jobs" */}
           <nav className="main-nav" aria-label="Main Navigation">
@@ -216,6 +253,7 @@ function AppContent() {
                   className={`nav-button ${activeView === 'profile' ? 'active' : ''}`}
                   onClick={handleNavigateToProfile}
                   aria-current={activeView === 'profile' ? 'page' : undefined}
+                  aria-label="My profile page"
                 >
                   My profile
                 </button>
@@ -226,6 +264,7 @@ function AppContent() {
                   className={`nav-button ${activeView === 'analyze' ? 'active' : ''}`}
                   onClick={handleNavigateToAnalyze}
                   aria-current={activeView === 'analyze' ? 'page' : undefined}
+                  aria-label="Analyze a job page"
                 >
                   Analyze a job
                 </button>
@@ -236,6 +275,7 @@ function AppContent() {
                   className={`nav-button ${activeView === 'saved' ? 'active' : ''}`}
                   onClick={handleNavigateToSaved}
                   aria-current={activeView === 'saved' ? 'page' : undefined}
+                  aria-label="Saved jobs page"
                 >
                   Saved jobs
                 </button>
@@ -244,7 +284,7 @@ function AppContent() {
           </nav>
 
           {/* Main Content Landmark */}
-          <main id="main-content" tabIndex={-1}>
+          <main id="main-content" aria-label="Main Content" tabIndex={-1}>
             {/* VIEW 1: MY PROFILE */}
             {activeView === 'profile' && (
               <div>
@@ -312,11 +352,18 @@ function AppContent() {
               </div>
             )}
           </main>
+
+          {/* Keyboard Shortcuts Help Modal Dialog */}
+          <ShortcutsHelp
+            isOpen={isHelpOpen}
+            onClose={handleCloseHelp}
+            openerRef={helpOpenerRef}
+          />
         </>
       )}
 
       {/* Footer Landmark */}
-      <footer className="site-footer" role="contentinfo">
+      <footer className="site-footer" role="contentinfo" aria-label="Site Footer">
         <p>
           <strong>AccessHire</strong> &bull; Job applications made accessible
         </p>

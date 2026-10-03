@@ -5,7 +5,7 @@ export default function Header() {
   const { modeInfo, openModeSelect } = useMode();
 
   return (
-    <header className="site-header" role="banner">
+    <header className="site-header" role="banner" aria-label="AccessHire Header">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
         <span className="site-badge">
           Job applications made accessible

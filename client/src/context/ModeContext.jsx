@@ -96,10 +96,14 @@ export function ModeProvider({ children }) {
     setIsSelectingMode(true);
   };
 
-  // Announce messages for screen-reader mode
-  const announce = (message) => {
-    setAnnouncement(message);
-  };
+  // Announce messages for screen readers via aria-live region
+  const announce = React.useCallback((message) => {
+    // Clear first and reset so screen readers detect subsequent identical announcements
+    setAnnouncement('');
+    setTimeout(() => {
+      setAnnouncement(message);
+    }, 40);
+  }, []);
 
   return (
     <ModeContext.Provider

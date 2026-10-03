@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateApplicationProgress } from '../api.js';
+import { useMode } from '../context/ModeContext.jsx';
 import SimplifiedResults from './SimplifiedResults.jsx';
 
 /**
@@ -139,6 +140,7 @@ function InformationNeeded({ information = [] }) {
  * GuidedApply: Step-by-step wizard + full checklist view with PATCH progress saving
  */
 function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
+  const { announce } = useMode();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(new Set(initialCompleted));
   const [viewMode, setViewMode] = useState('wizard'); // 'wizard' | 'checklist'
@@ -170,6 +172,9 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
         setSaveStatus('Saving progress...');
         await updateApplicationProgress(applicationId, Array.from(updated));
         setSaveStatus('Progress saved.');
+        if (announce) {
+          announce('Checklist progress saved.');
+        }
       } catch (err) {
         console.warn('Failed to save step progress:', err.message);
         setSaveStatus('Could not save progress to server.');
@@ -188,6 +193,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
             type="button"
             className={`btn ${viewMode === 'wizard' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('wizard')}
+            aria-label="Switch to step-by-step wizard view"
             style={{ minHeight: '36px', padding: '0.4rem 0.9rem', fontSize: '0.9rem' }}
           >
             Step-by-Step View
@@ -196,6 +202,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
             type="button"
             className={`btn ${viewMode === 'checklist' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('checklist')}
+            aria-label="Switch to full checklist view"
             style={{ minHeight: '36px', padding: '0.4rem 0.9rem', fontSize: '0.9rem' }}
           >
             Full Checklist View
@@ -222,6 +229,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               type="checkbox"
               checked={isCurrentDone}
               onChange={() => handleToggleStep(currentStepIndex)}
+              aria-label={`Mark step ${currentStepIndex + 1}: ${currentStep.title} as completed`}
             />
             <span>Mark step done</span>
           </label>
@@ -232,6 +240,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               className="btn btn-secondary"
               onClick={() => setCurrentStepIndex((prev) => Math.max(0, prev - 1))}
               disabled={currentStepIndex === 0}
+              aria-label="Go to previous step"
             >
               &larr; Previous Step
             </button>
@@ -241,6 +250,7 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
               className="btn btn-primary"
               onClick={() => setCurrentStepIndex((prev) => Math.min(totalSteps - 1, prev + 1))}
               disabled={currentStepIndex === totalSteps - 1}
+              aria-label="Go to next step"
             >
               Next Step &rarr;
             </button>
@@ -339,6 +349,7 @@ export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
               target="_blank"
               rel="noopener noreferrer"
               className="source-link"
+              aria-label={`View original job page for ${jobTitle || 'job position'} (opens in new window)`}
             >
               <span>View original job page</span>
               <span aria-hidden="true">&#8599;</span>

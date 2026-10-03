@@ -582,3 +582,77 @@ input[type="file"] {
   padding-top: 1.5rem;
   border-top: 1px solid var(--color-border);
 }
+
+/* Keyboard badge element */
+.key-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  background-color: #ffffff;
+  border: 1px solid var(--color-border-dark);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Accessible Form Error Summary (WCAG / GOV.UK style) */
+.error-summary-box {
+  background-color: var(--color-danger-bg);
+  border: 3px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.error-summary-box:focus {
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 3px !important;
+}
+
+.error-summary-heading {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-danger);
+  margin-bottom: 0.5rem;
+}
+
+.error-summary-list {
+  list-style: disc;
+  margin-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.error-summary-list a {
+  color: var(--color-danger);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.error-summary-list a:hover,
+.error-summary-list a:focus {
+  color: #7f1d1d;
+  background-color: #fee2e2;
+}
+
+/* Inline form field error message */
+.field-error-message {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-danger);
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.form-input[aria-invalid="true"],
+.form-textarea[aria-invalid="true"] {
+  border-color: var(--color-danger) !important;
+  background-color: #fffaf0;
+}
+
