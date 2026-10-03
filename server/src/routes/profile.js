@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProfile, saveProfile, VALID_ACCESSIBILITY_PREFERENCES } from '../storage.js';
+import { getProfile, saveProfile, VALID_ACCESSIBILITY_MODES, VALID_ACCESSIBILITY_PREFERENCES } from '../storage.js';
 
 const router = Router();
 
@@ -30,14 +30,24 @@ const handleSaveProfile = async (req, res, next) => {
       sanitized.email = email;
     }
 
-    // Validate accessibility preference
-    // Accepts only: "voice", "keyboard", "screen-reader", "simplified", or "" (default)
-    if (body.accessibilityPreference !== undefined) {
-      let accessibilityPreference = String(body.accessibilityPreference).trim();
-      if (!VALID_ACCESSIBILITY_PREFERENCES.includes(accessibilityPreference)) {
-        accessibilityPreference = '';
+    // Validate accessibility modes (multi-mode array)
+    if (body.accessibilityModes !== undefined) {
+      if (Array.isArray(body.accessibilityModes)) {
+        sanitized.accessibilityModes = Array.from(
+          new Set(body.accessibilityModes.map(String).map(s => s.trim()).filter(m => VALID_ACCESSIBILITY_MODES.includes(m)))
+        );
+      } else {
+        sanitized.accessibilityModes = [];
       }
-      sanitized.accessibilityPreference = accessibilityPreference;
+      sanitized.accessibilityPreference = sanitized.accessibilityModes[0] || '';
+    } else if (body.accessibilityPreference !== undefined) {
+      // Legacy single-mode support
+      let pref = String(body.accessibilityPreference).trim();
+      if (!VALID_ACCESSIBILITY_MODES.includes(pref)) {
+        pref = '';
+      }
+      sanitized.accessibilityPreference = pref;
+      sanitized.accessibilityModes = pref ? [pref] : [];
     }
 
     // Validate years of experience if provided

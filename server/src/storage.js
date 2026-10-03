@@ -10,23 +10,30 @@ const DATA_DIR = path.resolve(__dirname, '..', 'data');
 const PROFILE_FILE = path.join(DATA_DIR, 'profile.json');
 const APPLICATIONS_FILE = path.join(DATA_DIR, 'applications.json');
 
-// Default candidate profile structure
+// Default candidate profile structure (starts empty for new installs)
 export const DEFAULT_PROFILE = {
-  fullName: 'Alex Taylor',
-  email: 'alex.taylor@example.com',
-  skills: ['JavaScript', 'React', 'HTML', 'CSS', 'Communication', 'Problem Solving'],
-  yearsExperience: 2,
-  education: 'Associate Degree / Self-Taught',
-  summary: 'Frontend developer passionate about building clean, accessible web interfaces.',
-  accessibilityPreference: '' // "voice" | "keyboard" | "screen-reader" | "simplified" | ""
+  fullName: '',
+  email: '',
+  skills: [],
+  yearsExperience: 0,
+  education: '',
+  summary: '',
+  country: 'in',
+  accessibilityModes: [],
+  accessibilityPreference: '' // LEGACY: always first item of accessibilityModes or ''
 };
 
-// Valid accessibility preferences accepted by AccessHire
-export const VALID_ACCESSIBILITY_PREFERENCES = [
+// Valid accessibility modes accepted by AccessHire
+export const VALID_ACCESSIBILITY_MODES = [
   'voice',
   'keyboard',
   'screen-reader',
-  'simplified',
+  'simplified'
+];
+
+// Valid accessibility preferences accepted by AccessHire (legacy single mode)
+export const VALID_ACCESSIBILITY_PREFERENCES = [
+  ...VALID_ACCESSIBILITY_MODES,
   ''
 ];
 
@@ -71,6 +78,17 @@ export async function getProfile() {
     const content = await fs.readFile(PROFILE_FILE, 'utf-8');
     const parsed = JSON.parse(content);
 
+    // Normalize accessibility modes and legacy preference
+    let accessibilityModes = [];
+    if (Array.isArray(parsed.accessibilityModes)) {
+      accessibilityModes = Array.from(
+        new Set(parsed.accessibilityModes.map(String).map(s => s.trim()).filter(m => VALID_ACCESSIBILITY_MODES.includes(m)))
+      );
+    } else if (parsed.accessibilityPreference && VALID_ACCESSIBILITY_MODES.includes(parsed.accessibilityPreference)) {
+      accessibilityModes = [parsed.accessibilityPreference];
+    }
+    const accessibilityPreference = accessibilityModes[0] || '';
+
     // Normalize in case older profile format had different field names
     return {
       fullName: parsed.fullName || parsed.name || DEFAULT_PROFILE.fullName,
@@ -85,9 +103,8 @@ export async function getProfile() {
         : (typeof parsed.experience === 'number' ? parsed.experience : DEFAULT_PROFILE.yearsExperience),
       education: parsed.education || DEFAULT_PROFILE.education,
       summary: parsed.summary || parsed.experience || DEFAULT_PROFILE.summary,
-      accessibilityPreference: VALID_ACCESSIBILITY_PREFERENCES.includes(parsed.accessibilityPreference)
-        ? parsed.accessibilityPreference
-        : DEFAULT_PROFILE.accessibilityPreference
+      accessibilityModes,
+      accessibilityPreference
     };
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -101,11 +118,31 @@ export async function getProfile() {
 
 /**
  * Validate, sanitize, and save the candidate profile.
- * Merges partial updates with existing profile so specific field updates (e.g. accessibilityPreference)
+ * Merges partial updates with existing profile so specific field updates (e.g. accessibilityModes)
  * do not erase existing fields.
  */
 export async function saveProfile(input) {
   const existing = await getProfile();
+
+  // Handle accessibilityModes / accessibilityPreference
+  let accessibilityModes = existing.accessibilityModes || [];
+  if (input.accessibilityModes !== undefined) {
+    if (Array.isArray(input.accessibilityModes)) {
+      accessibilityModes = Array.from(
+        new Set(input.accessibilityModes.map(String).map(s => s.trim()).filter(m => VALID_ACCESSIBILITY_MODES.includes(m)))
+      );
+    } else {
+      accessibilityModes = [];
+    }
+  } else if (input.accessibilityPreference !== undefined) {
+    const pref = String(input.accessibilityPreference).trim();
+    if (VALID_ACCESSIBILITY_MODES.includes(pref)) {
+      accessibilityModes = [pref];
+    } else {
+      accessibilityModes = [];
+    }
+  }
+  const accessibilityPreference = accessibilityModes[0] || '';
 
   const profile = {
     fullName: input.fullName !== undefined
@@ -132,11 +169,8 @@ export async function saveProfile(input) {
     summary: input.summary !== undefined
       ? (typeof input.summary === 'string' ? input.summary.trim() : '')
       : existing.summary,
-    accessibilityPreference: input.accessibilityPreference !== undefined
-      ? (VALID_ACCESSIBILITY_PREFERENCES.includes(input.accessibilityPreference)
-          ? input.accessibilityPreference
-          : '')
-      : existing.accessibilityPreference
+    accessibilityModes,
+    accessibilityPreference
   };
 
   await atomicWriteJson(PROFILE_FILE, profile);

@@ -31,11 +31,28 @@ import '../voice/voice.css';
  * 3. Accessible live status region (role="status")
  * 4. Error messages for unsupported browsers or blocked microphones
  * 5. Visible commands help list and vendor privacy notice
+ * 6. Read Aloud toggle (Default ON without screen-reader, OFF with screen-reader)
  * 
  * Plain English comments throughout.
  */
 export default function VoiceControls() {
-  const { mode } = useMode();
+  const { hasMode } = useMode();
+  const isScreenReaderActive = hasMode('screen-reader');
+
+  // Read aloud toggle state:
+  // Default: ON if screen-reader is not selected, OFF if it is.
+  // Persist user's choice in localStorage ('accesshire_readaloud': 'on' | 'off').
+  // Explicit saved choice wins if present; otherwise follows screen-reader mode.
+  const [readAloudOverride, setReadAloudOverride] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('accesshire_readaloud');
+      if (saved === 'on') return true;
+      if (saved === 'off') return false;
+    }
+    return null;
+  });
+
+  const readAloud = readAloudOverride !== null ? readAloudOverride : !isScreenReaderActive;
 
   // State management
   const [isListening, setIsListening] = useState(false);
@@ -45,6 +62,7 @@ export default function VoiceControls() {
   const [statusMessage, setStatusMessage] = useState('Microphone idle. Click "Start listening" to speak.');
   const [errorMessage, setErrorMessage] = useState('');
   const [showHelpList, setShowHelpList] = useState(true);
+  const [showTurnOnPrompt, setShowTurnOnPrompt] = useState(false);
 
   // References
   const recognitionRef = useRef(null);
@@ -70,6 +88,32 @@ export default function VoiceControls() {
     };
   }, []);
 
+  // Handler: Toggle Read Aloud explicitly
+  const handleToggleReadAloud = () => {
+    const next = !readAloud;
+    setReadAloudOverride(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accesshire_readaloud', next ? 'on' : 'off');
+    }
+    if (!next) {
+      stopSpeaking();
+      setIsSpeakingState(false);
+      setStatusMessage('Read aloud turned off. Spoken speech is muted.');
+    } else {
+      setStatusMessage('Read aloud turned on.');
+      setShowTurnOnPrompt(false);
+    }
+  };
+
+  const handleTurnOnReadAloud = () => {
+    setReadAloudOverride(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('accesshire_readaloud', 'on');
+    }
+    setStatusMessage('Read aloud turned on.');
+    setShowTurnOnPrompt(false);
+  };
+
   // Handler: Stop all audio
   const handleStopAll = () => {
     stopSpeaking();
@@ -78,17 +122,22 @@ export default function VoiceControls() {
     setLastCommandRun('Stop speech');
   };
 
-  // Helper: Speak text with status updates
+  // Central Helper: Route every speech-synthesis call through here to check readAloud toggle
   const speakWithStatus = (text, commandName) => {
     if (!text || !text.trim()) return;
+
+    if (commandName) {
+      setLastCommandRun(commandName);
+    }
+
+    // Suppress speech if Read Aloud is OFF
+    if (!readAloud) {
+      return;
+    }
 
     if (!hasSynthesisSupport) {
       setErrorMessage('Speech output is not supported by your browser.');
       return;
-    }
-
-    if (commandName) {
-      setLastCommandRun(commandName);
     }
 
     speak(text, {
@@ -107,6 +156,14 @@ export default function VoiceControls() {
 
   // Handler: Read Plain English Summary
   const handleReadSummary = () => {
+    if (!readAloud) {
+      setStatusMessage('Read aloud is off. Turn it on, or use your screen reader.');
+      setShowTurnOnPrompt(true);
+      setLastCommandRun('Read summary');
+      return;
+    }
+
+    setShowTurnOnPrompt(false);
     const summary = getJobSummaryText();
     if (summary) {
       setStatusMessage('Reading plain English job summary aloud.');
@@ -120,6 +177,14 @@ export default function VoiceControls() {
 
   // Handler: Read the current guided application step
   const handleReadCurrentStep = () => {
+    if (!readAloud) {
+      setStatusMessage('Read aloud is off. Turn it on, or use your screen reader.');
+      setShowTurnOnPrompt(true);
+      setLastCommandRun('Read current step');
+      return;
+    }
+
+    setShowTurnOnPrompt(false);
     const stepInfo = getCurrentGuidedStepInfo();
     if (stepInfo.exists) {
       const statusText = stepInfo.isDone ? 'Marked as completed.' : 'Not completed yet.';
@@ -135,13 +200,20 @@ export default function VoiceControls() {
 
   // Handler: Read all application steps
   const handleReadSteps = () => {
+    if (!readAloud) {
+      setStatusMessage('Read aloud is off. Turn it on, or use your screen reader.');
+      setShowTurnOnPrompt(true);
+      setLastCommandRun('Read steps');
+      return;
+    }
+
+    setShowTurnOnPrompt(false);
     // Check if checklist view button is available to ensure all steps can be read
     const fullChecklistBtn = Array.from(document.querySelectorAll('button')).find(
-      b => b.textContent && b.textContent.includes('Full Checklist View')
+      (b) => b.textContent && b.textContent.includes('Full Checklist View')
     );
 
     if (fullChecklistBtn) {
-      // Switch to checklist view so all steps are present in the DOM
       fullChecklistBtn.click();
     }
 
@@ -161,7 +233,6 @@ export default function VoiceControls() {
         setStatusMessage(`Reading all ${checklistItems.length} application steps.`);
         speakWithStatus(fullScript, 'Read steps');
       } else {
-        // Fallback to checking the current wizard step
         const stepInfo = getCurrentGuidedStepInfo();
         if (stepInfo.exists) {
           handleReadCurrentStep();
@@ -185,7 +256,6 @@ export default function VoiceControls() {
         setStatusMessage(result.message);
         setLastCommandRun('Next step');
         if (result.success) {
-          // Speak feedback and automatically read the new step
           speakWithStatus('Next step.', 'Next step');
           setTimeout(() => {
             const info = getCurrentGuidedStepInfo();
@@ -204,7 +274,6 @@ export default function VoiceControls() {
         setStatusMessage(result.message);
         setLastCommandRun('Previous step');
         if (result.success) {
-          // Speak feedback and automatically read the previous step
           speakWithStatus('Previous step.', 'Previous step');
           setTimeout(() => {
             const info = getCurrentGuidedStepInfo();
@@ -287,7 +356,6 @@ export default function VoiceControls() {
 
   // Handler: When speech transcript arrives
   const handleTranscript = (transcript) => {
-    // If the computer is currently reading something aloud, ignore audio to avoid feedback loop
     if (isSpeakingRef.current) {
       return;
     }
@@ -316,14 +384,12 @@ export default function VoiceControls() {
     setErrorMessage('');
 
     if (isListening) {
-      // Turn off listening
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
       setIsListening(false);
       setStatusMessage('Microphone paused.');
     } else {
-      // Check browser support first
       if (!hasRecognitionSupport) {
         setErrorMessage(
           'Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge for voice input.'
@@ -331,7 +397,6 @@ export default function VoiceControls() {
         return;
       }
 
-      // Initialize recognition controller
       if (!recognitionRef.current) {
         recognitionRef.current = createSpeechRecognition({
           onStart: () => {
@@ -356,8 +421,8 @@ export default function VoiceControls() {
     }
   };
 
-  // Requirement: Show the panel ONLY when mode is "voice"
-  if (mode !== 'voice') {
+  // Requirement: Show panel when voice mode is active in the multi-mode set
+  if (!hasMode('voice')) {
     return null;
   }
 
@@ -367,20 +432,55 @@ export default function VoiceControls() {
       role="region"
       aria-labelledby="voice-panel-heading"
     >
-      {/* Panel Header */}
-      <div className="voice-panel-header">
-        <h2 id="voice-panel-heading" className="voice-panel-title">
+      {/* Panel Header with Read Aloud toggle and Voice Status Badge */}
+      <div className="voice-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <h2 id="voice-panel-heading" className="voice-panel-title" style={{ margin: 0 }}>
           <span aria-hidden="true">&#127908;</span>
           <span>Voice Assistance Controls</span>
         </h2>
-        <div className="voice-panel-badge" aria-label="Voice assistance mode is active">
-          <span
-            className={`voice-status-indicator ${
-              isListening ? 'listening' : isSpeakingState ? 'speaking' : ''
-            }`}
-            aria-hidden="true"
-          />
-          <span>{isListening ? 'Microphone Active' : isSpeakingState ? 'Speaking' : 'Voice Mode Ready'}</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {/* Labelled Read Aloud Toggle */}
+          <label
+            htmlFor="voice-readaloud-toggle"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              color: 'var(--color-text-main)',
+              backgroundColor: 'var(--color-surface-alt)',
+              padding: '0.35rem 0.65rem',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--color-border)'
+            }}
+          >
+            <input
+              type="checkbox"
+              id="voice-readaloud-toggle"
+              checked={readAloud}
+              onChange={handleToggleReadAloud}
+              style={{
+                width: '1.15rem',
+                height: '1.15rem',
+                accentColor: 'var(--color-primary)',
+                cursor: 'pointer'
+              }}
+            />
+            <span>Read aloud (spoken by AccessHire)</span>
+          </label>
+
+          <div className="voice-panel-badge" aria-label="Voice assistance status">
+            <span
+              className={`voice-status-indicator ${
+                isListening ? 'listening' : isSpeakingState ? 'speaking' : ''
+              }`}
+              aria-hidden="true"
+            />
+            <span>{isListening ? 'Microphone Active' : isSpeakingState ? 'Speaking' : 'Voice Mode Ready'}</span>
+          </div>
         </div>
       </div>
 
@@ -478,6 +578,20 @@ export default function VoiceControls() {
           <span>{statusMessage}</span>
         </div>
 
+        {/* Show prompt with button to turn Read Aloud on when user attempted a read command while OFF */}
+        {showTurnOnPrompt && !readAloud && (
+          <div style={{ marginTop: '0.6rem' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleTurnOnReadAloud}
+              style={{ minHeight: '38px', padding: '0.35rem 0.85rem', fontSize: '0.9rem' }}
+            >
+              Turn on read aloud
+            </button>
+          </div>
+        )}
+
         <div className="voice-status-details">
           <div>
             <span className="voice-tag">Heard speech:</span>
@@ -502,7 +616,7 @@ export default function VoiceControls() {
         <button
           type="button"
           className="voice-help-toggle-btn"
-          onClick={() => setShowHelpList(prev => !prev)}
+          onClick={() => setShowHelpList((prev) => !prev)}
           aria-expanded={showHelpList}
           aria-controls="voice-commands-list"
           aria-label={showHelpList ? 'Hide voice commands help list' : 'Show voice commands help list'}
@@ -513,7 +627,7 @@ export default function VoiceControls() {
 
         {showHelpList && (
           <div id="voice-commands-list" className="voice-help-grid">
-            {VOICE_COMMANDS.map(cmd => (
+            {VOICE_COMMANDS.map((cmd) => (
               <div key={cmd.id} className="voice-help-card">
                 <div className="voice-help-command">
                   <span>Say: </span>

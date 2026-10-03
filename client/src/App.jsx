@@ -22,7 +22,7 @@ function checkProfileComplete(prof) {
 }
 
 function AppContent() {
-  const { mode, modeInfo, isSelectingMode, announce, announcement } = useMode();
+  const { hasMode, isSelectingMode, announce, announcement } = useMode();
 
   // Navigation order: "My profile" -> "Analyze a job" -> "Saved jobs"
   const [activeView, setActiveView] = useState('profile');
@@ -210,7 +210,7 @@ function AppContent() {
       ) : (
         <>
           {/* Baseline Mode Notifications */}
-          {mode === 'keyboard' && <KeyboardTips onOpenShortcutsHelp={openHelp} />}
+          {hasMode('keyboard') && <KeyboardTips onOpenShortcutsHelp={openHelp} />}
           <VoiceControls />
 
           {/* Navigation order: "My profile", "Analyze a job", "Saved jobs" */}

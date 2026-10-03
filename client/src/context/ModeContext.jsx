@@ -30,84 +30,139 @@ export const MODES = {
 
 const ModeContext = createContext(null);
 
-export function ModeProvider({ children }) {
-  // Initialize mode from localStorage for instant loading
-  const savedLocalMode = typeof window !== 'undefined' ? localStorage.getItem('accesshire_mode') : null;
-  const initialMode = savedLocalMode && MODES[savedLocalMode] ? savedLocalMode : null;
+// Helper to retrieve and migrate initial modes from localStorage
+function getInitialModes() {
+  if (typeof window === 'undefined') return [];
 
-  const [mode, setModeState] = useState(initialMode);
-  // If no mode is set yet, show the full-page mode screen first
-  const [isSelectingMode, setIsSelectingMode] = useState(!initialMode);
+  // Check new key 'accesshire_modes' (JSON array)
+  const savedModesJson = localStorage.getItem('accesshire_modes');
+  if (savedModesJson) {
+    try {
+      const parsed = JSON.parse(savedModesJson);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(id => Boolean(MODES[id]));
+      }
+    } catch {
+      // Ignore parse failure
+    }
+  }
+
+  // Check legacy single key 'accesshire_mode'
+  const legacyMode = localStorage.getItem('accesshire_mode');
+  if (legacyMode && MODES[legacyMode]) {
+    const migrated = [legacyMode];
+    localStorage.setItem('accesshire_modes', JSON.stringify(migrated));
+    localStorage.removeItem('accesshire_mode');
+    return migrated;
+  }
+
+  return [];
+}
+
+export function ModeProvider({ children }) {
+  const initialModes = getInitialModes();
+
+  const [modes, setModesState] = useState(initialModes);
+  // If no modes are set yet, show the full-page mode screen first
+  const [isSelectingMode, setIsSelectingMode] = useState(initialModes.length === 0);
   const [announcement, setAnnouncement] = useState('');
 
-  // Keep document.documentElement.dataset.mode synchronized
+  // Keep document.documentElement.dataset.modes synchronized (stop setting data-mode)
   useEffect(() => {
-    if (mode) {
-      document.documentElement.dataset.mode = mode;
-      localStorage.setItem('accesshire_mode', mode);
-    } else {
-      delete document.documentElement.dataset.mode;
-    }
-  }, [mode]);
+    // Ensure legacy data-mode is cleaned up
+    document.documentElement.removeAttribute('data-mode');
 
-  // Sync with profile if localStorage was empty
+    if (modes.length > 0) {
+      document.documentElement.dataset.modes = modes.join(' ');
+      localStorage.setItem('accesshire_modes', JSON.stringify(modes));
+    } else {
+      delete document.documentElement.dataset.modes;
+    }
+  }, [modes]);
+
+  // Sync with profile if localStorage was empty on initial load
   useEffect(() => {
     async function syncFromProfile() {
       try {
         const profile = await getProfile();
-        if (profile && profile.accessibilityPreference && MODES[profile.accessibilityPreference]) {
-          const pref = profile.accessibilityPreference;
-          // If no mode was chosen in local storage, use the profile's saved preference
-          if (!savedLocalMode) {
-            setModeState(pref);
-            document.documentElement.dataset.mode = pref;
-            localStorage.setItem('accesshire_mode', pref);
+        if (profile) {
+          let serverModes = [];
+          if (Array.isArray(profile.accessibilityModes) && profile.accessibilityModes.length > 0) {
+            serverModes = profile.accessibilityModes.filter(id => Boolean(MODES[id]));
+          } else if (profile.accessibilityPreference && MODES[profile.accessibilityPreference]) {
+            serverModes = [profile.accessibilityPreference];
+          }
+
+          if (serverModes.length > 0) {
+            setModesState(serverModes);
+            document.documentElement.dataset.modes = serverModes.join(' ');
+            document.documentElement.removeAttribute('data-mode');
+            localStorage.setItem('accesshire_modes', JSON.stringify(serverModes));
             setIsSelectingMode(false);
           }
         }
-      } catch (err) {
+      } catch {
         // Silently catch network errors on initial mode sync
       }
     }
 
-    if (!savedLocalMode) {
+    const hasStored = typeof window !== 'undefined' && Boolean(localStorage.getItem('accesshire_modes'));
+    if (!hasStored) {
       syncFromProfile();
     }
-  }, [savedLocalMode]);
+  }, []);
 
-  // Function to save mode choice (persists to state, localStorage, and PUT /api/profile)
-  const chooseMode = async (newMode) => {
-    if (!MODES[newMode]) return;
+  // Function to save multi-mode choice (persists to state, localStorage, and PUT /api/profile)
+  const chooseModes = async (newModes) => {
+    if (!Array.isArray(newModes)) return;
+    const validModes = Array.from(new Set(newModes.filter(id => Boolean(MODES[id]))));
+    if (validModes.length === 0) return;
 
-    setModeState(newMode);
-    document.documentElement.dataset.mode = newMode;
-    localStorage.setItem('accesshire_mode', newMode);
+    setModesState(validModes);
+    document.documentElement.dataset.modes = validModes.join(' ');
+    document.documentElement.removeAttribute('data-mode');
+    localStorage.setItem('accesshire_modes', JSON.stringify(validModes));
     setIsSelectingMode(false);
 
     // Save to profile in backend (merges with existing profile)
     try {
-      await updateProfile({ accessibilityPreference: newMode });
+      await updateProfile({ accessibilityModes: validModes });
     } catch (err) {
-      console.warn('Could not sync mode to server profile:', err.message);
+      console.warn('Could not sync modes to server profile:', err.message);
     }
   };
+
+  // Backward-compatibility alias for single mode selection
+  const chooseMode = async (singleMode) => {
+    if (singleMode) {
+      await chooseModes([singleMode]);
+    }
+  };
+
+  const hasMode = (id) => modes.includes(id);
 
   const openModeSelect = () => {
     setIsSelectingMode(true);
   };
 
-  // Announce messages for screen-reader mode
+  // Announce messages in live regions
   const announce = (message) => {
     setAnnouncement(message);
   };
 
+  // List of active mode metadata objects
+  const modeInfo = modes.map(id => MODES[id]).filter(Boolean);
+
   return (
     <ModeContext.Provider
       value={{
-        mode,
-        modeInfo: mode ? MODES[mode] : null,
-        isSelectingMode,
+        modes,
+        hasMode,
+        chooseModes,
         chooseMode,
+        modeInfo,
+        mode: modes[0] || null, // Backward compatibility for legacy readers
+        isSelectingMode,
         openModeSelect,
         announce,
         announcement

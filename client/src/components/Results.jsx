@@ -306,8 +306,9 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
  * Main Results Component
  */
 export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
+  const { hasMode } = useMode();
   if (!analysis) return null;
-  if (typeof document !== 'undefined' && document.documentElement.dataset.mode === 'simplified') {
+  if (hasMode('simplified')) {
     return <SimplifiedResults analysis={analysis} onNewAnalysis={onNewAnalysis} onEditProfile={onEditProfile} />;
   }
 

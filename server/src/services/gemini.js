@@ -177,7 +177,7 @@ Candidate Profile:
 - Skills: ${Array.isArray(profile.skills) && profile.skills.length > 0 ? profile.skills.join(', ') : 'None listed'}
 - Years of Experience: ${profile.yearsExperience || 0}
 - Summary/Background: ${profile.summary || 'None listed'}
-- Accessibility Preference: ${profile.accessibilityPreference || 'none'}
+- Accessibility Preference: ${(Array.isArray(profile.accessibilityModes) ? profile.accessibilityModes.join(', ') : profile.accessibilityPreference) || 'none'}
 - Profile is empty: ${emptyProfile ? 'YES' : 'NO'}
 
 Job Description:
