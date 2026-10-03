@@ -202,7 +202,6 @@ function AppContent() {
           {(mode === 'voice' || mode === 'simplified') && (
             <ModeNotice modeTitle={modeInfo ? modeInfo.title : 'Selected Mode'} />
           )}
-          <VoiceControls />
 
           {/* Navigation order: "My profile", "Analyze a job", "Saved jobs" */}
           <nav className="main-nav" aria-label="Main Navigation">
