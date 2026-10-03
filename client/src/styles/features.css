@@ -81,3 +81,104 @@
   min-height: 44px;
   width: 100%;
 }
+
+/* --------------------------------------------------------------------------
+   Resume Panel & Preview Component (Phase 4)
+   -------------------------------------------------------------------------- */
+.resume-panel {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.resume-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.resume-panel-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+}
+
+.resume-readiness-box {
+  background: var(--color-surface-alt, #f9fafb);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.resume-gaps-box {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+}
+
+.resume-preview-box {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.resume-preview-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+}
+
+.resume-preview-contact {
+  margin: 0 0 1.5rem 0;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.resume-preview-section {
+  margin-bottom: 1.25rem;
+}
+
+.resume-preview-heading {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.25rem;
+}
+
+.resume-notes-box {
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.resume-download-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.resume-download-actions .btn {
+  min-height: 44px;
+}

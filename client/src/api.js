@@ -114,3 +114,67 @@ export async function deleteApplication(id) {
   });
   return handleResponse(res);
 }
+
+// -----------------------------------------------------------------------------
+// Resume Generation & Tailoring API (Phase 4)
+// -----------------------------------------------------------------------------
+export async function getResumeReadiness(applicationId) {
+  const query = applicationId ? `?applicationId=${encodeURIComponent(applicationId)}` : '';
+  const res = await fetch(`${BASE_URL}/resume/readiness${query}`);
+  return handleResponse(res);
+}
+
+export async function tailorResume({ applicationId, job } = {}) {
+  const res = await fetch(`${BASE_URL}/resume/tailor`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ applicationId, job })
+  });
+  return handleResponse(res);
+}
+
+export async function renderResume({ resume, format = 'docx' }) {
+  const res = await fetch(`${BASE_URL}/resume/render`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume, format })
+  });
+
+  if (!res.ok) {
+    let errorMsg = `Download failed with HTTP status ${res.status}`;
+    try {
+      const errData = await res.json();
+      if (errData && errData.error) errorMsg = errData.error;
+    } catch {
+      // response might be non-JSON
+    }
+    const err = new Error(errorMsg);
+    err.status = res.status;
+    throw err;
+  }
+
+  const blob = await res.blob();
+
+  // Extract filename from Content-Disposition header if available
+  const disposition = res.headers.get('content-disposition') || '';
+  let filename = `Resume.${format}`;
+  const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+  if (filenameMatch && filenameMatch[1]) {
+    filename = filenameMatch[1];
+  }
+
+  // Trigger browser download via object URL
+  if (typeof window !== 'undefined' && window.document) {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+  }
+
+  return blob;
+}
+

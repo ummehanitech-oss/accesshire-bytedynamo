@@ -8,6 +8,7 @@ import healthRouter from './routes/health.js';
 import analyzeRouter from './routes/analyze.js';
 import profileRouter from './routes/profile.js';
 import applicationsRouter from './routes/applications.js';
+import resumeRouter from './routes/resume.js';
 import { errorHandler } from './utils/errorHandler.js';
 
 // Load environment variables from .env file
@@ -63,6 +64,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/applications', applicationsRouter);
+app.use('/api/resume', resumeRouter);
 
 // Central error handler
 app.use(errorHandler);
