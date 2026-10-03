@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { updateApplicationProgress } from '../api.js';
+import SimplifiedResults from './SimplifiedResults.jsx';
 
 /**
  * SummaryCard: Short, plain English overview of the job
@@ -295,6 +296,9 @@ function GuidedApply({ applicationId, steps = [], initialCompleted = [] }) {
  */
 export default function Results({ analysis, onNewAnalysis, onEditProfile }) {
   if (!analysis) return null;
+  if (typeof document !== 'undefined' && document.documentElement.dataset.mode === 'simplified') {
+    return <SimplifiedResults analysis={analysis} onNewAnalysis={onNewAnalysis} onEditProfile={onEditProfile} />;
+  }
 
   const {
     id,

@@ -51,6 +51,11 @@ AccessHire creates a streamlined, low-stress bridge between job seekers and job 
 - **Profile-First Navigation Flow:** Structured flow (Mode screen -> My profile -> Analyze a job -> Saved jobs). "Analyze a job" is guarded until the user completes their profile with a full name and at least one skill.
 - **Zero-Score Rule:** When a compatibility score is 0, guided application steps and checklists are hidden, displaying an informative status card with missing skills and options to edit profile or try another job.
 - **Keyboard & Screen Reader Accessibility:** 3px focus rings (4px in keyboard mode), keyboard tips panel, screen reader live announcements, skip-to-content link, semantic landmarks, and automatic focus management on navigation.
+- **Simplified Visual Mode (`data-mode="simplified"`):** Streamlined single-column experience with enlarged base text (>=20px), generous spacing, low-distraction styling, plain buttons, and non-essential content (such as secondary descriptions and footer) hidden.
+- **One-Section-at-a-Time Results Stepper:** In simplified mode, analysis results are presented sequentially across 5 focused stages (Summary, Score, Documents, Information, Steps) with big Next/Back buttons and a "Section X of 5" status label.
+- **Accessible Display Settings Panel:** An accessible, labelled panel toggled via a dedicated button, closable with the `Esc` key, and available across all application modes.
+- **High-Contrast Theme (Contrast >= 7:1):** WCAG AAA-compliant dark theme featuring pure black background, light text, strong borders, and stateful toggle buttons with `aria-pressed`.
+- **Customizable Root Text Scaling:** Dynamic text sizing buttons (smaller, normal, larger, largest) driven by CSS variables on `<html>`, persisted across sessions in `localStorage`.
 - **Voice Assistance Mode:** Dedicated voice-driven and hands-free interface enabled when "Voice assistance mode" is selected.
   - **Speech Synthesis Output:** Integrated speech synthesis controls allowing users to read the plain English summary, all application steps, or individual guided wizard steps aloud, with immediate stop capability.
   - **Voice Command Recognition:** Built with native Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`), activated strictly on-demand via a manual "Start listening" button with flexible English phrase matching.

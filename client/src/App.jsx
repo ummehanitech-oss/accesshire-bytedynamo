@@ -8,6 +8,7 @@ import JobInput from './components/JobInput.jsx';
 import Results from './components/Results.jsx';
 import ProfileForm from './components/ProfileForm.jsx';
 import SavedJobs from './components/SavedJobs.jsx';
+import DisplaySettings from './components/DisplaySettings.jsx';
 import { ModeProvider, useMode } from './context/ModeContext.jsx';
 import { analyzeJobText, analyzeJobFile, analyzeJobUrl, getProfile } from './api.js';
 
@@ -182,6 +183,9 @@ function AppContent() {
           {announcement}
         </div>
       )}
+
+      {/* Accessible Display Settings Panel */}
+      <DisplaySettings />
 
       {/* Site Header */}
       <Header />
