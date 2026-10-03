@@ -1,0 +1,9 @@
+/* ==========================================================================
+   AccessHire Main Stylesheet
+   Imports separated CSS files so teammates do not clash:
+   1. accessibility.css (focus styles, skip link, sr-only, reduced motion)
+   2. layout.css (look, layout, cards, forms, results)
+   ========================================================================== */
+
+@import './styles/accessibility.css';
+@import './styles/layout.css';

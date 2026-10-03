@@ -1,0 +1,277 @@
+/* ==========================================================================
+   AccessHire - Voice Assistance Mode Stylesheet
+   Styles for VoiceControls panel, live status region, and command help list.
+   ========================================================================== */
+
+.voice-controls-panel {
+  background: #ffffff;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.voice-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 1.25rem;
+}
+
+.voice-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+  margin: 0;
+}
+
+.voice-panel-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border: 1px solid #bfdbfe;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Button toolbar */
+.voice-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+/* Base button sizing ensures min 44px touch targets */
+.voice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.65rem 1.2rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.voice-btn:active {
+  transform: translateY(1px);
+}
+
+.voice-btn-listen {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+}
+
+.voice-btn-listen:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.voice-btn-listening {
+  background-color: #b91c1c;
+  color: #ffffff;
+  border-color: #991b1b;
+  animation: pulse-border 1.8s infinite;
+}
+
+.voice-btn-listening:hover:not(:disabled) {
+  background-color: #991b1b;
+}
+
+.voice-btn-action {
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+  border-color: var(--color-border);
+}
+
+.voice-btn-action:hover:not(:disabled) {
+  background-color: var(--color-surface-alt);
+  border-color: var(--color-border-dark);
+}
+
+.voice-btn-stop {
+  background-color: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.voice-btn-stop:hover:not(:disabled) {
+  background-color: #ffe4e6;
+  border-color: #fda4af;
+}
+
+/* Accessible focus styling */
+.voice-btn:focus-visible {
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 3px !important;
+}
+
+/* Status feedback area */
+.voice-status-area {
+  background: var(--color-surface-alt);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.voice-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.voice-status-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+}
+
+.voice-status-indicator.listening {
+  background-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.voice-status-indicator.speaking {
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.25);
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.voice-status-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.voice-tag {
+  font-weight: 700;
+  color: var(--color-text-main);
+  min-width: 110px;
+  display: inline-block;
+}
+
+.voice-heard-text {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.voice-command-tag {
+  display: inline-block;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
+}
+
+/* Help commands list */
+.voice-help-container {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.voice-help-toggle-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0;
+  text-decoration: underline;
+}
+
+.voice-help-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 680px) {
+  .voice-help-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.voice-help-card {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+}
+
+.voice-help-command {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 0.2rem;
+}
+
+.voice-help-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* Privacy Notice */
+.voice-privacy-notice {
+  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  background-color: #f8fafc;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.9rem;
+  margin-top: 1.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.45;
+}
+
+/* Animations */
+@keyframes pulse-dot {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(185, 28, 28, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0); }
+}

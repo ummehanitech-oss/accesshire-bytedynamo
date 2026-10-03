@@ -1,0 +1,38 @@
+Frontend Web Developer (Accessibility Focus)
+Organization: CivicTech Open Initiatives
+Location: Remote (Flexible Hours)
+Employment Type: Full-Time / Contractor
+
+About CivicTech Open Initiatives:
+CivicTech is a non-profit dedicated to making municipal public services accessible online for citizens of all abilities. We partner with local governments to design, build, and maintain public portals that adhere strictly to WCAG 2.1 Level AA accessibility standards.
+
+Role Overview:
+We are seeking an entry-to-mid-level Frontend Web Developer with a strong interest in assistive technology and web accessibility. In this role, you will help build accessible web forms, audit municipal portals with screen readers, and refactor existing user interfaces so that citizens using keyboards, screen readers, and speech inputs can easily complete public applications.
+
+Key Responsibilities:
+- Build accessible and responsive user interfaces using React, JavaScript, and semantic HTML5.
+- Perform accessibility audits using keyboard navigation, browser developer tools, and screen readers (NVDA / VoiceOver).
+- Ensure all interface elements meet WCAG 2.1 AA color contrast and focus visibility requirements.
+- Collaborate with community stakeholders to write plain language instructions and documentation.
+- Maintain code repositories on GitHub and participate in friendly peer code reviews.
+
+Required Skills & Qualifications:
+- Proficiency in HTML5, CSS3, and JavaScript (ES6+).
+- Hands-on experience building user interfaces with React.
+- Understanding of web accessibility principles, such as ARIA landmarks, roles, and keyboard navigation.
+- Excellent written and verbal communication skills with a willingness to learn.
+
+Nice-to-Have Skills:
+- Experience testing with screen readers like NVDA, JAWS, or VoiceOver.
+- Familiarity with automated accessibility testing tools (e.g. axe-core, Lighthouse).
+- Experience with Node.js and Express backends.
+
+Required Application Documents:
+- Current Resume or Curriculum Vitae (CV).
+- Link to your portfolio website or GitHub profile.
+- A brief paragraph (under 200 words) describing an accessible project you built or an accessibility feature you appreciate.
+
+How to Apply:
+1. Review the required qualifications and ensure your resume is updated.
+2. Ensure your portfolio or code samples are publicly accessible.
+3. Submit your resume, portfolio link, and introductory note through our portal by 5:00 PM EST on Friday.
