@@ -20,6 +20,14 @@ export function getApplicationsPath() {
   return path.join(getDataDir(), 'applications.json');
 }
 
+import {
+  validateAndSanitizeProfile,
+  VALID_ACCESSIBILITY_MODES,
+  ADZUNA_COUNTRIES
+} from './profileSchema.js';
+
+export { VALID_ACCESSIBILITY_MODES, ADZUNA_COUNTRIES };
+
 // Export DATA_DIR for compatibility
 export const DATA_DIR = getDataDir();
 
@@ -28,22 +36,21 @@ export const DEFAULT_PROFILE = {
   fullName: '',
   email: '',
   phone: '',
+  location: '',
+  country: 'in',
+  links: { linkedin: '', github: '', portfolio: '', other: [] },
+  summary: '',
   skills: [],
   yearsExperience: 0,
+  experience: [],
+  projects: [],
+  educationEntries: [],
   education: '',
-  summary: '',
-  country: 'in',
+  certifications: [],
+  languages: [],
   accessibilityModes: [],
-  accessibilityPreference: '' // LEGACY: always first item of accessibilityModes or ''
+  accessibilityPreference: ''
 };
-
-// Valid accessibility modes accepted by AccessHire
-export const VALID_ACCESSIBILITY_MODES = [
-  'voice',
-  'keyboard',
-  'screen-reader',
-  'simplified'
-];
 
 // Valid accessibility preferences accepted by AccessHire (legacy single mode)
 export const VALID_ACCESSIBILITY_PREFERENCES = [
@@ -86,66 +93,14 @@ async function atomicWriteJson(filePath, data) {
  * Read and return the candidate profile.
  * When fields are missing or empty, returns empty values (never invents or substitutes sample data).
  * If profile.json is missing, creates it with empty values and returns DEFAULT_PROFILE.
+ * Runs through validateAndSanitizeProfile to apply migrations (e.g. legacy education to educationEntries).
  */
 export async function getProfile() {
   try {
     await ensureDataDir();
     const content = await fs.readFile(getProfilePath(), 'utf-8');
     const parsed = JSON.parse(content);
-
-    // Normalize accessibility modes and legacy preference
-    let accessibilityModes = [];
-    if (Array.isArray(parsed.accessibilityModes)) {
-      accessibilityModes = Array.from(
-        new Set(parsed.accessibilityModes.map(String).map(s => s.trim()).filter(m => VALID_ACCESSIBILITY_MODES.includes(m)))
-      );
-    } else if (parsed.accessibilityPreference && VALID_ACCESSIBILITY_MODES.includes(parsed.accessibilityPreference)) {
-      accessibilityModes = [parsed.accessibilityPreference];
-    }
-    const accessibilityPreference = accessibilityModes[0] || '';
-
-    // Handle string or array skills
-    let skills = [];
-    if (Array.isArray(parsed.skills)) {
-      skills = parsed.skills.map(s => String(s).trim()).filter(Boolean);
-    } else if (typeof parsed.skills === 'string') {
-      skills = parsed.skills.split(',').map(s => s.trim()).filter(Boolean);
-    }
-
-    // Handle numeric yearsExperience
-    let yearsExperience = 0;
-    if (typeof parsed.yearsExperience === 'number' && Number.isFinite(parsed.yearsExperience)) {
-      yearsExperience = Math.max(0, Math.min(60, parsed.yearsExperience));
-    } else if (typeof parsed.experience === 'number' && Number.isFinite(parsed.experience)) {
-      yearsExperience = Math.max(0, Math.min(60, parsed.experience));
-    }
-
-    const fullName = typeof parsed.fullName === 'string'
-      ? parsed.fullName
-      : (typeof parsed.name === 'string' ? parsed.name : '');
-
-    const email = typeof parsed.email === 'string' ? parsed.email : '';
-    const phone = typeof parsed.phone === 'string' ? parsed.phone : '';
-    const education = typeof parsed.education === 'string' ? parsed.education : '';
-    const summary = typeof parsed.summary === 'string'
-      ? parsed.summary
-      : (typeof parsed.experience === 'string' ? parsed.experience : '');
-    const country = typeof parsed.country === 'string' && parsed.country.trim()
-      ? parsed.country.trim().toLowerCase()
-      : 'in';
-
-    return {
-      fullName,
-      email,
-      phone,
-      skills,
-      yearsExperience,
-      education,
-      summary,
-      country,
-      accessibilityModes,
-      accessibilityPreference
-    };
+    return validateAndSanitizeProfile(parsed, DEFAULT_PROFILE);
   } catch (error) {
     if (error.code === 'ENOENT') {
       await atomicWriteJson(getProfilePath(), DEFAULT_PROFILE);
@@ -163,62 +118,7 @@ export async function getProfile() {
  */
 export async function saveProfile(input = {}) {
   const existing = await getProfile();
-
-  // Handle accessibilityModes / accessibilityPreference
-  let accessibilityModes = existing.accessibilityModes || [];
-  if (input.accessibilityModes !== undefined) {
-    if (Array.isArray(input.accessibilityModes)) {
-      accessibilityModes = Array.from(
-        new Set(input.accessibilityModes.map(String).map(s => s.trim()).filter(m => VALID_ACCESSIBILITY_MODES.includes(m)))
-      );
-    } else {
-      accessibilityModes = [];
-    }
-  } else if (input.accessibilityPreference !== undefined) {
-    const pref = String(input.accessibilityPreference).trim();
-    if (VALID_ACCESSIBILITY_MODES.includes(pref)) {
-      accessibilityModes = [pref];
-    } else {
-      accessibilityModes = [];
-    }
-  }
-  const accessibilityPreference = accessibilityModes[0] || '';
-
-  const profile = {
-    fullName: input.fullName !== undefined
-      ? (typeof input.fullName === 'string' ? input.fullName.trim() : '')
-      : (typeof existing.fullName === 'string' ? existing.fullName : ''),
-    email: input.email !== undefined
-      ? (typeof input.email === 'string' ? input.email.trim() : '')
-      : (typeof existing.email === 'string' ? existing.email : ''),
-    phone: input.phone !== undefined
-      ? (typeof input.phone === 'string' ? input.phone.trim() : '')
-      : (typeof existing.phone === 'string' ? existing.phone : ''),
-    skills: input.skills !== undefined
-      ? (Array.isArray(input.skills)
-          ? input.skills.map(s => String(s).trim()).filter(Boolean)
-          : (typeof input.skills === 'string'
-              ? input.skills.split(',').map(s => s.trim()).filter(Boolean)
-              : []))
-      : (Array.isArray(existing.skills) ? existing.skills : []),
-    yearsExperience: input.yearsExperience !== undefined
-      ? (Number.isFinite(Number(input.yearsExperience))
-          ? Math.max(0, Math.min(60, Number(input.yearsExperience)))
-          : 0)
-      : (typeof existing.yearsExperience === 'number' ? existing.yearsExperience : 0),
-    education: input.education !== undefined
-      ? (typeof input.education === 'string' ? input.education.trim() : '')
-      : (typeof existing.education === 'string' ? existing.education : ''),
-    summary: input.summary !== undefined
-      ? (typeof input.summary === 'string' ? input.summary.trim() : '')
-      : (typeof existing.summary === 'string' ? existing.summary : ''),
-    country: input.country !== undefined
-      ? (typeof input.country === 'string' ? input.country.trim().toLowerCase() : 'in')
-      : (typeof existing.country === 'string' ? existing.country : 'in'),
-    accessibilityModes,
-    accessibilityPreference
-  };
-
+  const profile = validateAndSanitizeProfile(input, existing);
   await atomicWriteJson(getProfilePath(), profile);
   return profile;
 }

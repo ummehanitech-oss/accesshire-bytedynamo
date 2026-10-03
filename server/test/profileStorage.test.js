@@ -166,4 +166,93 @@ describe('Profile Storage & Empty Defaults', () => {
     assert.deepEqual(saved.accessibilityModes, ['keyboard']);
     assert.equal(saved.accessibilityPreference, 'keyboard');
   });
+
+  test('saveProfile() preserves sections when updating individual sections', async () => {
+    // 1. Save Section 1: Contact
+    await saveProfile({
+      fullName: 'Alice Walker',
+      email: 'alice@example.com',
+      location: 'London, UK',
+      country: 'gb',
+      links: { linkedin: 'https://linkedin.com/in/alice', github: '', portfolio: '', other: [] }
+    });
+
+    // 2. Save Section 2: Summary and skills
+    await saveProfile({
+      summary: 'Passionate accessibility engineer',
+      skills: ['WCAG', 'ARIA', 'React'],
+      yearsExperience: 4
+    });
+
+    // 3. Save Section 3: Work experience
+    await saveProfile({
+      experience: [
+        {
+          company: 'Inclusion Labs',
+          role: 'Accessibility Tester',
+          location: 'London',
+          startDate: '2021-06',
+          current: true,
+          bullets: ['Conducted screen reader audits']
+        }
+      ]
+    });
+
+    // 4. Save Section 4: Projects
+    await saveProfile({
+      projects: [
+        {
+          name: 'Contrast Checker',
+          description: 'A tool for checking color contrast ratios',
+          technologies: ['JavaScript', 'Canvas'],
+          link: 'https://github.com/alice/contrast-checker'
+        }
+      ]
+    });
+
+    // 5. Save Section 5: Education
+    await saveProfile({
+      educationEntries: [
+        {
+          degree: 'B.Sc. Software Engineering',
+          institution: 'University of London',
+          year: '2020',
+          details: 'First Class Honours'
+        }
+      ]
+    });
+
+    // 6. Save Section 6: Certifications & Languages
+    const finalProfile = await saveProfile({
+      certifications: [
+        {
+          name: 'CPACC',
+          issuer: 'IAAP',
+          year: '2022'
+        }
+      ],
+      languages: ['English', 'German']
+    });
+
+    // Verify ALL sections coexist seamlessly in the persisted profile
+    assert.equal(finalProfile.fullName, 'Alice Walker');
+    assert.equal(finalProfile.email, 'alice@example.com');
+    assert.equal(finalProfile.location, 'London, UK');
+    assert.equal(finalProfile.country, 'gb');
+    assert.equal(finalProfile.links.linkedin, 'https://linkedin.com/in/alice');
+    assert.equal(finalProfile.summary, 'Passionate accessibility engineer');
+    assert.deepEqual(finalProfile.skills, ['WCAG', 'ARIA', 'React']);
+    assert.equal(finalProfile.yearsExperience, 4);
+    assert.equal(finalProfile.experience.length, 1);
+    assert.equal(finalProfile.experience[0].company, 'Inclusion Labs');
+    assert.deepEqual(finalProfile.experience[0].bullets, ['Conducted screen reader audits']);
+    assert.equal(finalProfile.projects.length, 1);
+    assert.equal(finalProfile.projects[0].name, 'Contrast Checker');
+    assert.equal(finalProfile.educationEntries.length, 1);
+    assert.equal(finalProfile.educationEntries[0].degree, 'B.Sc. Software Engineering');
+    assert.equal(finalProfile.education, 'B.Sc. Software Engineering, University of London, 2020');
+    assert.equal(finalProfile.certifications.length, 1);
+    assert.equal(finalProfile.certifications[0].name, 'CPACC');
+    assert.deepEqual(finalProfile.languages, ['English', 'German']);
+  });
 });

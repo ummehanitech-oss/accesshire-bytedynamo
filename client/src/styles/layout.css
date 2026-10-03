@@ -582,3 +582,130 @@ input[type="file"] {
   padding-top: 1.5rem;
   border-top: 1px solid var(--color-border);
 }
+
+/* Guided Profile Form Stepper & Dynamic Entry Cards */
+.profile-stepper-nav {
+  margin-bottom: 2rem;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+}
+
+.profile-stepper-list {
+  display: flex;
+  list-style: none;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.profile-step-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  min-height: 44px;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.profile-step-btn:hover {
+  background-color: var(--color-surface-alt);
+  color: var(--color-text-main);
+}
+
+.profile-step-btn[aria-current="step"] {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  font-weight: 700;
+}
+
+.profile-step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-border);
+  color: var(--color-text-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.profile-step-btn[aria-current="step"] .profile-step-badge {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.entry-card {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.entry-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.entry-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-main);
+}
+
+.bullet-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.bullet-item-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-icon-remove {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  background: #ffffff;
+  color: var(--color-danger);
+  border: 2px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.btn-icon-remove:hover {
+  background-color: #fee2e2;
+}
+

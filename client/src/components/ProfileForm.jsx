@@ -2,42 +2,102 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getProfile, updateProfile } from '../api.js';
 import { useMode } from '../context/ModeContext.jsx';
 
+// Available Adzuna search country options
+const COUNTRY_OPTIONS = [
+  { code: 'in', name: 'India (in)' },
+  { code: 'us', name: 'United States (us)' },
+  { code: 'gb', name: 'United Kingdom (gb)' },
+  { code: 'ca', name: 'Canada (ca)' },
+  { code: 'au', name: 'Australia (au)' },
+  { code: 'de', name: 'Germany (de)' },
+  { code: 'fr', name: 'France (fr)' },
+  { code: 'sg', name: 'Singapore (sg)' },
+  { code: 'za', name: 'South Africa (za)' },
+  { code: 'nz', name: 'New Zealand (nz)' },
+  { code: 'at', name: 'Austria (at)' },
+  { code: 'be', name: 'Belgium (be)' },
+  { code: 'br', name: 'Brazil (br)' },
+  { code: 'ch', name: 'Switzerland (ch)' },
+  { code: 'es', name: 'Spain (es)' },
+  { code: 'it', name: 'Italy (it)' },
+  { code: 'mx', name: 'Mexico (mx)' },
+  { code: 'nl', name: 'Netherlands (nl)' },
+  { code: 'pl', name: 'Poland (pl)' },
+  { code: 'ru', name: 'Russia (ru)' }
+];
+
+const SECTIONS = [
+  { id: 1, title: 'Contact', short: 'Contact' },
+  { id: 2, title: 'Summary and skills', short: 'Summary & Skills' },
+  { id: 3, title: 'Work experience', short: 'Work Experience' },
+  { id: 4, title: 'Projects', short: 'Projects' },
+  { id: 5, title: 'Education', short: 'Education' },
+  { id: 6, title: 'Certifications and languages', short: 'Certs & Languages' }
+];
+
 export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profileIncompleteAlert }) {
   const [profile, setProfile] = useState({
     fullName: '',
     email: '',
+    phone: '',
+    location: '',
+    country: 'in',
+    links: { linkedin: '', github: '', portfolio: '', other: [] },
+    summary: '',
     skillsString: '',
     yearsExperience: 0,
-    education: '',
-    summary: ''
+    experience: [],
+    projects: [],
+    educationEntries: [],
+    certifications: [],
+    languagesString: ''
   });
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: '' }
   const [errors, setErrors] = useState([]); // Form validation errors list
   const [isSavedComplete, setIsSavedComplete] = useState(false);
 
-  const continueBtnRef = useRef(null);
+  const sectionHeadingRef = useRef(null);
   const errorSummaryRef = useRef(null);
-  const { announce } = useMode();
+  const continueBtnRef = useRef(null);
+  const pendingFocusIdRef = useRef(null);
 
-  // Load profile on mount
+  const { announce, openModeSelect, modes, modeInfo } = useMode();
+
+  // Load profile on initial mount
   useEffect(() => {
     async function load() {
       try {
         const data = await getProfile();
         const skillsArr = Array.isArray(data.skills) ? data.skills : [];
+        const langsArr = Array.isArray(data.languages) ? data.languages : [];
+        const rawLinks = data.links || {};
+
         setProfile({
           fullName: data.fullName || '',
           email: data.email || '',
+          phone: data.phone || '',
+          location: data.location || '',
+          country: data.country || 'in',
+          links: {
+            linkedin: rawLinks.linkedin || '',
+            github: rawLinks.github || '',
+            portfolio: rawLinks.portfolio || '',
+            other: Array.isArray(rawLinks.other) ? rawLinks.other : []
+          },
+          summary: data.summary || '',
           skillsString: skillsArr.join(', '),
           yearsExperience: typeof data.yearsExperience === 'number' ? data.yearsExperience : 0,
-          education: data.education || '',
-          summary: data.summary || ''
+          experience: Array.isArray(data.experience) ? data.experience : [],
+          projects: Array.isArray(data.projects) ? data.projects : [],
+          educationEntries: Array.isArray(data.educationEntries) ? data.educationEntries : [],
+          certifications: Array.isArray(data.certifications) ? data.certifications : [],
+          languagesString: langsArr.join(', ')
         });
 
-        // Check if initially complete
         const complete = Boolean(data.fullName && data.fullName.trim() && skillsArr.length > 0);
         setIsSavedComplete(complete);
         if (onProfileSaved) {
@@ -55,107 +115,404 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
     load();
   }, []);
 
-  // When saved as complete, move focus to the "Continue to Analyze a job" button
+  // Handle focus movement after state updates (e.g. adding new items)
   useEffect(() => {
-    if (isSavedComplete && status && status.type === 'success' && continueBtnRef.current) {
-      continueBtnRef.current.focus();
+    if (pendingFocusIdRef.current) {
+      const el = document.getElementById(pendingFocusIdRef.current);
+      if (el) {
+        el.focus();
+        pendingFocusIdRef.current = null;
+      }
     }
-  }, [isSavedComplete, status]);
+  });
 
-  // When form validation fails, move focus to the error summary
+  // Focus error summary when validation fails
   useEffect(() => {
     if (errors.length > 0 && errorSummaryRef.current) {
       errorSummaryRef.current.focus();
     }
   }, [errors]);
 
-  const handleChange = (e) => {
+  // Handle section navigation (non-linear)
+  const goToSection = (stepNum) => {
+    setErrors([]);
+    setStatus(null);
+    setCurrentStep(stepNum);
+    const targetSection = SECTIONS.find(s => s.id === stepNum);
+    announce(`Navigated to section ${stepNum} of 6: ${targetSection ? targetSection.title : ''}`);
+    setTimeout(() => {
+      if (sectionHeadingRef.current) {
+        sectionHeadingRef.current.focus();
+      }
+    }, 50);
+  };
+
+  // Change handlers
+  const handleBasicChange = (e) => {
     const { name, value } = e.target;
+    setProfile(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleLinkChange = (field, value) => {
     setProfile(prev => ({
       ...prev,
-      [name]: value
+      links: {
+        ...prev.links,
+        [field]: value
+      }
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus(null);
+  const handleOtherLinkChange = (index, value) => {
+    setProfile(prev => {
+      const newOther = [...prev.links.other];
+      newOther[index] = value;
+      return {
+        ...prev,
+        links: {
+          ...prev.links,
+          other: newOther
+        }
+      };
+    });
+  };
 
-    // Client-side validation for accessible error summary
+  const addOtherLink = () => {
+    const newIdx = profile.links.other.length;
+    setProfile(prev => ({
+      ...prev,
+      links: {
+        ...prev.links,
+        other: [...prev.links.other, '']
+      }
+    }));
+    pendingFocusIdRef.current = `profile-link-other-${newIdx}`;
+    announce('Added new link input');
+  };
+
+  const removeOtherLink = (index) => {
+    setProfile(prev => ({
+      ...prev,
+      links: {
+        ...prev.links,
+        other: prev.links.other.filter((_, idx) => idx !== index)
+      }
+    }));
+    announce('Removed link');
+  };
+
+  // Experience handlers
+  const addExperience = () => {
+    const newId = `exp_${Date.now()}`;
+    const newEntry = {
+      id: newId,
+      company: '',
+      role: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      current: false,
+      bullets: ['']
+    };
+    setProfile(prev => ({
+      ...prev,
+      experience: [...prev.experience, newEntry]
+    }));
+    pendingFocusIdRef.current = `exp-company-${newId}`;
+    announce('Added new work experience entry');
+  };
+
+  const updateExperience = (id, field, value) => {
+    setProfile(prev => ({
+      ...prev,
+      experience: prev.experience.map(item => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === 'current' && value === true) {
+            updated.endDate = '';
+          }
+          return updated;
+        }
+        return item;
+      })
+    }));
+  };
+
+  const removeExperience = (id, companyName, roleName) => {
+    setProfile(prev => ({
+      ...prev,
+      experience: prev.experience.filter(item => item.id !== id)
+    }));
+    announce(`Removed work experience: ${companyName || 'Untitled'} ${roleName || ''}`);
+  };
+
+  const addBullet = (expId) => {
+    let bulletIdx = 0;
+    setProfile(prev => ({
+      ...prev,
+      experience: prev.experience.map(item => {
+        if (item.id === expId) {
+          const bullets = Array.isArray(item.bullets) ? [...item.bullets, ''] : [''];
+          bulletIdx = bullets.length - 1;
+          return { ...item, bullets };
+        }
+        return item;
+      })
+    }));
+    pendingFocusIdRef.current = `exp-bullet-${expId}-${bulletIdx}`;
+    announce('Added new bullet point');
+  };
+
+  const updateBullet = (expId, bulletIdx, value) => {
+    setProfile(prev => ({
+      ...prev,
+      experience: prev.experience.map(item => {
+        if (item.id === expId) {
+          const bullets = [...(item.bullets || [])];
+          bullets[bulletIdx] = value;
+          return { ...item, bullets };
+        }
+        return item;
+      })
+    }));
+  };
+
+  const removeBullet = (expId, bulletIdx) => {
+    setProfile(prev => ({
+      ...prev,
+      experience: prev.experience.map(item => {
+        if (item.id === expId) {
+          return { ...item, bullets: (item.bullets || []).filter((_, idx) => idx !== bulletIdx) };
+        }
+        return item;
+      })
+    }));
+    announce(`Removed bullet line ${bulletIdx + 1}`);
+  };
+
+  // Projects handlers
+  const addProject = () => {
+    const newId = `prj_${Date.now()}`;
+    const newEntry = {
+      id: newId,
+      name: '',
+      description: '',
+      technologies: [],
+      techString: '',
+      link: ''
+    };
+    setProfile(prev => ({
+      ...prev,
+      projects: [...prev.projects, newEntry]
+    }));
+    pendingFocusIdRef.current = `prj-name-${newId}`;
+    announce('Added new project entry');
+  };
+
+  const updateProject = (id, field, value) => {
+    setProfile(prev => ({
+      ...prev,
+      projects: prev.projects.map(item => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === 'techString') {
+            updated.technologies = value.split(',').map(s => s.trim()).filter(Boolean);
+          }
+          return updated;
+        }
+        return item;
+      })
+    }));
+  };
+
+  const removeProject = (id, projectName) => {
+    setProfile(prev => ({
+      ...prev,
+      projects: prev.projects.filter(item => item.id !== id)
+    }));
+    announce(`Removed project: ${projectName || 'Untitled'}`);
+  };
+
+  // Education handlers
+  const addEducation = () => {
+    const newId = `edu_${Date.now()}`;
+    const newEntry = {
+      id: newId,
+      degree: '',
+      institution: '',
+      year: '',
+      details: ''
+    };
+    setProfile(prev => ({
+      ...prev,
+      educationEntries: [...prev.educationEntries, newEntry]
+    }));
+    pendingFocusIdRef.current = `edu-degree-${newId}`;
+    announce('Added new education entry');
+  };
+
+  const updateEducation = (id, field, value) => {
+    setProfile(prev => ({
+      ...prev,
+      educationEntries: prev.educationEntries.map(item => item.id === id ? { ...item, [field]: value } : item)
+    }));
+  };
+
+  const removeEducation = (id, degreeName) => {
+    setProfile(prev => ({
+      ...prev,
+      educationEntries: prev.educationEntries.filter(item => item.id !== id)
+    }));
+    announce(`Removed education: ${degreeName || 'Untitled'}`);
+  };
+
+  // Certifications handlers
+  const addCertification = () => {
+    const newId = `crt_${Date.now()}`;
+    const newEntry = {
+      id: newId,
+      name: '',
+      issuer: '',
+      year: ''
+    };
+    setProfile(prev => ({
+      ...prev,
+      certifications: [...prev.certifications, newEntry]
+    }));
+    pendingFocusIdRef.current = `crt-name-${newId}`;
+    announce('Added new certification entry');
+  };
+
+  const updateCertification = (id, field, value) => {
+    setProfile(prev => ({
+      ...prev,
+      certifications: prev.certifications.map(item => item.id === id ? { ...item, [field]: value } : item)
+    }));
+  };
+
+  const removeCertification = (id, certName) => {
+    setProfile(prev => ({
+      ...prev,
+      certifications: prev.certifications.filter(item => item.id !== id)
+    }));
+    announce(`Removed certification: ${certName || 'Untitled'}`);
+  };
+
+  // Validate only the current section before saving
+  const validateSection = (stepNum) => {
     const validationErrors = [];
-    if (!profile.fullName.trim()) {
-      validationErrors.push({
-        fieldId: 'profile-fullname',
-        message: 'Full name is required. Please enter your name.'
-      });
+
+    if (stepNum === 1) {
+      if (!profile.fullName.trim()) {
+        validationErrors.push({
+          fieldId: 'profile-fullname',
+          message: 'Full name is required. Please enter your name.'
+        });
+      }
+      if (profile.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim())) {
+        validationErrors.push({
+          fieldId: 'profile-email',
+          message: 'Email address must be in a valid format (e.g. name@example.com).'
+        });
+      }
     }
 
-    // Convert comma-separated string to string array
-    const skillsArray = profile.skillsString
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    if (skillsArray.length === 0) {
-      validationErrors.push({
-        fieldId: 'profile-skills',
-        message: 'At least one skill is required. Please enter your skills separated by commas.'
-      });
+    if (stepNum === 2) {
+      const skills = profile.skillsString.split(',').map(s => s.trim()).filter(Boolean);
+      if (skills.length === 0) {
+        validationErrors.push({
+          fieldId: 'profile-skills',
+          message: 'At least one skill is required. Please enter your skills separated by commas.'
+        });
+      }
     }
 
-    if (profile.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email.trim())) {
-      validationErrors.push({
-        fieldId: 'profile-email',
-        message: 'Email address must be in a valid format (e.g. name@example.com).'
-      });
-    }
+    return validationErrors;
+  };
 
+  // Save current section (PUT merge)
+  const handleSaveSection = async (andNext = false) => {
+    setStatus(null);
+    const validationErrors = validateSection(currentStep);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
-      announce(`Form submission failed with ${validationErrors.length} error${validationErrors.length > 1 ? 's' : ''}.`);
+      announce(`Section has ${validationErrors.length} validation error${validationErrors.length > 1 ? 's' : ''}.`);
       return;
     }
 
     setErrors([]);
     setSaving(true);
 
-    const payload = {
-      fullName: profile.fullName.trim(),
-      email: profile.email.trim(),
-      skills: skillsArray,
-      yearsExperience: Number(profile.yearsExperience) || 0,
-      education: profile.education.trim(),
-      summary: profile.summary.trim()
-    };
+    // Build section-specific payload for PUT merge
+    let payload = {};
+    if (currentStep === 1) {
+      payload = {
+        fullName: profile.fullName.trim(),
+        email: profile.email.trim(),
+        phone: profile.phone.trim(),
+        location: profile.location.trim(),
+        country: profile.country.trim().toLowerCase(),
+        links: profile.links
+      };
+    } else if (currentStep === 2) {
+      payload = {
+        summary: profile.summary.trim(),
+        skills: profile.skillsString.split(',').map(s => s.trim()).filter(Boolean),
+        yearsExperience: Number(profile.yearsExperience) || 0
+      };
+    } else if (currentStep === 3) {
+      payload = {
+        experience: profile.experience
+      };
+    } else if (currentStep === 4) {
+      payload = {
+        projects: profile.projects.map(p => ({
+          ...p,
+          technologies: Array.isArray(p.technologies) && p.technologies.length > 0
+            ? p.technologies
+            : (typeof p.techString === 'string' ? p.techString.split(',').map(s => s.trim()).filter(Boolean) : [])
+        }))
+      };
+    } else if (currentStep === 5) {
+      payload = {
+        educationEntries: profile.educationEntries
+      };
+    } else if (currentStep === 6) {
+      payload = {
+        certifications: profile.certifications,
+        languages: profile.languagesString.split(',').map(s => s.trim()).filter(Boolean)
+      };
+    }
 
     try {
       const res = await updateProfile(payload);
       const savedProfile = res.profile || payload;
 
-      // Check completeness: fullName must be filled and at least 1 skill
-      const complete = Boolean(savedProfile.fullName && savedProfile.fullName.trim() && savedProfile.skills && savedProfile.skills.length > 0);
+      // Update completeness status
+      const hasName = Boolean(savedProfile.fullName && savedProfile.fullName.trim());
+      const hasSkills = Array.isArray(savedProfile.skills) && savedProfile.skills.length > 0;
+      const complete = hasName && hasSkills;
       setIsSavedComplete(complete);
 
+      announce('Saved');
       setStatus({
         type: 'success',
         message: complete
-          ? 'Your profile is saved and complete! You can now analyze job postings.'
-          : 'Profile saved. Please add your full name and at least one skill to analyze jobs.'
+          ? 'Profile section saved! Your profile is complete and ready for job analysis.'
+          : 'Section saved! Add your full name and at least one skill to complete your profile.'
       });
-
-      announce('Profile saved successfully.');
 
       if (onProfileSaved) {
         onProfileSaved(savedProfile);
       }
+
+      if (andNext && currentStep < 6) {
+        goToSection(currentStep + 1);
+      }
     } catch (err) {
-      const errorMsg = err.message || 'Failed to update profile.';
-      setStatus({
-        type: 'error',
-        message: errorMsg
-      });
-      setErrors([{ fieldId: 'profile-fullname', message: errorMsg }]);
-      announce(`Profile save failed: ${errorMsg}`);
+      const errorMsg = err.message || 'Failed to save profile.';
+      setStatus({ type: 'error', message: errorMsg });
+      announce(`Save failed: ${errorMsg}`);
     } finally {
       setSaving(false);
     }
@@ -169,13 +526,15 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
     );
   }
 
+  const currentSectionMeta = SECTIONS.find(s => s.id === currentStep) || SECTIONS[0];
+
   return (
     <section className="card-section" aria-labelledby="profile-heading">
       <h2 id="profile-heading" className="section-title">
         My Candidate Profile
       </h2>
       <p className="section-subtitle">
-        AccessHire uses your profile to check how well your skills and background match each job posting.
+        AccessHire uses your profile to check how well your skills and background match each job posting and build tailored resumes.
       </p>
 
       {/* Alert shown when user tried to open Analyze before completing profile */}
@@ -188,7 +547,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
         >
           <span aria-hidden="true">&#9888;</span>
           <div>
-            <strong>Action Required:</strong> Please complete your profile first. We use it to check how well you match each job.
+            <strong>Action Required:</strong> Please complete your profile first (full name and at least one skill). We use it to check how well you match each job.
           </div>
         </div>
       )}
@@ -205,8 +564,8 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
         </div>
       )}
 
-      {/* Clear continue button after saving complete profile */}
-      {isSavedComplete && status && status.type === 'success' && (
+      {/* Continue to Analyze Button when profile is complete */}
+      {isSavedComplete && (
         <div
           style={{
             backgroundColor: 'var(--color-primary-light)',
@@ -226,7 +585,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               Ready for Job Analysis!
             </strong>
             <span style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)' }}>
-              Your profile has the required details. You can now analyze job descriptions.
+              Your profile has the required details. You can continue polishing other sections or start analyzing jobs.
             </span>
           </div>
           <button
@@ -241,7 +600,40 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
         </div>
       )}
 
-      {/* Form Error Summary: receives focus on failed submit */}
+      {/* Guided Progress Stepper */}
+      <nav className="profile-stepper-nav" aria-label="Profile Sections Navigation">
+        <ol className="profile-stepper-list">
+          {SECTIONS.map((sec) => (
+            <li key={sec.id}>
+              <button
+                type="button"
+                className="profile-step-btn"
+                aria-current={currentStep === sec.id ? 'step' : undefined}
+                onClick={() => goToSection(sec.id)}
+              >
+                <span className="profile-step-badge">{sec.id}</span>
+                <span>{sec.short}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      {/* Active Section Header */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3
+          ref={sectionHeadingRef}
+          tabIndex={-1}
+          style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 0.25rem 0' }}
+        >
+          Step {currentStep} of 6: {currentSectionMeta.title}
+        </h3>
+        <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+          Progress is saved section by section. You can jump to any section at any time.
+        </p>
+      </div>
+
+      {/* Form Error Summary */}
       {errors.length > 0 && (
         <div
           ref={errorSummaryRef}
@@ -258,12 +650,12 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <span aria-hidden="true">&#9888;</span>
-            <h3 id="profile-error-summary-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+            <h4 id="profile-error-summary-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
               There is a problem ({errors.length} {errors.length === 1 ? 'error' : 'errors'})
-            </h3>
+            </h4>
           </div>
           <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>
-            Please review and correct the errors below, or select a link to jump directly to the field:
+            Please review and correct the errors below before continuing:
           </p>
           <ul style={{ paddingLeft: '1.5rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             {errors.map((err, idx) => (
@@ -285,16 +677,17 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
         </div>
       )}
 
-      <form onSubmit={handleSubmit} noValidate>
-        <fieldset disabled={saving}>
-          <legend>Personal & Contact Details</legend>
+      {/* SECTION 1: CONTACT */}
+      {currentStep === 1 && (
+        <fieldset disabled={saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Contact Information</legend>
 
           <div className="form-group">
             <label htmlFor="profile-fullname" className="form-label">
               Full Name <span style={{ color: 'var(--color-danger)' }}>*</span>
             </label>
             <p className="form-help" id="name-help">
-              Required. How you want to be addressed in applications.
+              Required. How you want employers to address you on your applications and resume.
             </p>
             <input
               id="profile-fullname"
@@ -302,7 +695,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               type="text"
               className="form-input"
               value={profile.fullName}
-              onChange={handleChange}
+              onChange={handleBasicChange}
               placeholder="e.g. Jane Doe"
               required
               aria-required="true"
@@ -321,7 +714,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               Email Address
             </label>
             <p className="form-help" id="email-help">
-              Optional. Contact email address for job opportunities.
+              Where employers can reach you. Required when generating a resume.
             </p>
             <input
               id="profile-email"
@@ -329,7 +722,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               type="email"
               className="form-input"
               value={profile.email}
-              onChange={handleChange}
+              onChange={handleBasicChange}
               placeholder="e.g. jane.doe@example.com"
               aria-invalid={errors.some(e => e.fieldId === 'profile-email') ? 'true' : undefined}
               aria-describedby={errors.some(e => e.fieldId === 'profile-email') ? 'email-error email-help' : 'email-help'}
@@ -340,17 +733,169 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               </p>
             )}
           </div>
-        </fieldset>
 
-        <fieldset disabled={saving}>
-          <legend>Skills & Background</legend>
+          <div className="form-group">
+            <label htmlFor="profile-phone" className="form-label">
+              Phone Number
+            </label>
+            <p className="form-help" id="phone-help">
+              Optional mobile or contact number.
+            </p>
+            <input
+              id="profile-phone"
+              name="phone"
+              type="tel"
+              className="form-input"
+              value={profile.phone}
+              onChange={handleBasicChange}
+              placeholder="e.g. +91 98765 43210"
+              aria-describedby="phone-help"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="profile-location" className="form-label">
+              Location / City
+            </label>
+            <p className="form-help" id="location-help">
+              City or region where you are based, for example "Bengaluru, India" or "Remote".
+            </p>
+            <input
+              id="profile-location"
+              name="location"
+              type="text"
+              className="form-input"
+              value={profile.location}
+              onChange={handleBasicChange}
+              placeholder="e.g. Bengaluru, India"
+              aria-describedby="location-help"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="profile-country" className="form-label">
+              Country for Job Search
+            </label>
+            <p className="form-help" id="country-help">
+              Country used to find job openings via job search providers. Default is India (in).
+            </p>
+            <select
+              id="profile-country"
+              name="country"
+              className="form-select"
+              value={profile.country}
+              onChange={handleBasicChange}
+              aria-describedby="country-help"
+            >
+              {COUNTRY_OPTIONS.map(opt => (
+                <option key={opt.code} value={opt.code}>
+                  {opt.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <fieldset style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '1.25rem', marginTop: '1.5rem' }}>
+            <legend style={{ fontWeight: 700, padding: '0 0.5rem', color: 'var(--color-text-main)' }}>
+              Online Links & Profiles
+            </legend>
+
+            <div className="form-group">
+              <label htmlFor="profile-link-linkedin" className="form-label">
+                LinkedIn Profile URL
+              </label>
+              <input
+                id="profile-link-linkedin"
+                type="url"
+                className="form-input"
+                value={profile.links.linkedin}
+                onChange={(e) => handleLinkChange('linkedin', e.target.value)}
+                placeholder="https://linkedin.com/in/yourname"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="profile-link-github" className="form-label">
+                GitHub Profile URL
+              </label>
+              <input
+                id="profile-link-github"
+                type="url"
+                className="form-input"
+                value={profile.links.github}
+                onChange={(e) => handleLinkChange('github', e.target.value)}
+                placeholder="https://github.com/yourname"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="profile-link-portfolio" className="form-label">
+                Portfolio or Personal Website URL
+              </label>
+              <input
+                id="profile-link-portfolio"
+                type="url"
+                className="form-input"
+                value={profile.links.portfolio}
+                onChange={(e) => handleLinkChange('portfolio', e.target.value)}
+                placeholder="https://yourportfolio.com"
+              />
+            </div>
+
+            {profile.links.other.length > 0 && (
+              <div style={{ marginTop: '1rem' }}>
+                <span className="form-label" style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  Other Links:
+                </span>
+                {profile.links.other.map((linkUrl, oIdx) => (
+                  <div key={oIdx} className="bullet-item-row" style={{ marginBottom: '0.5rem' }}>
+                    <label htmlFor={`profile-link-other-${oIdx}`} className="sr-only">
+                      Other link {oIdx + 1}
+                    </label>
+                    <input
+                      id={`profile-link-other-${oIdx}`}
+                      type="url"
+                      className="form-input"
+                      value={linkUrl}
+                      onChange={(e) => handleOtherLinkChange(oIdx, e.target.value)}
+                      placeholder="https://..."
+                    />
+                    <button
+                      type="button"
+                      className="btn-icon-remove"
+                      onClick={() => removeOtherLink(oIdx)}
+                      aria-label={`Remove other link ${oIdx + 1}`}
+                    >
+                      &times; Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={addOtherLink}
+              style={{ marginTop: '0.75rem', minHeight: '44px' }}
+            >
+              + Add another link
+            </button>
+          </fieldset>
+        </fieldset>
+      )}
+
+      {/* SECTION 2: SUMMARY AND SKILLS */}
+      {currentStep === 2 && (
+        <fieldset disabled={saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Summary and Skills</legend>
 
           <div className="form-group">
             <label htmlFor="profile-skills" className="form-label">
-              Skills (comma-separated) <span style={{ color: 'var(--color-danger)' }}>*</span>
+              Key Skills (comma-separated) <span style={{ color: 'var(--color-danger)' }}>*</span>
             </label>
             <p className="form-help" id="skills-help">
-              Required. List at least one skill or technical tool, separated by commas.
+              Required. List at least one skill or technical tool, separated by commas (for example: React, JavaScript, HTML, WCAG, Problem Solving).
             </p>
             <input
               id="profile-skills"
@@ -358,7 +903,7 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               type="text"
               className="form-input"
               value={profile.skillsString}
-              onChange={handleChange}
+              onChange={handleBasicChange}
               placeholder="e.g. React, JavaScript, HTML, CSS, Communication, Problem Solving"
               required
               aria-required="true"
@@ -373,51 +918,11 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
           </div>
 
           <div className="form-group">
-            <label htmlFor="profile-experience" className="form-label">
-              Years of Experience
-            </label>
-            <p className="form-help" id="exp-help">
-              Total years of relevant work, volunteer, or self-directed project experience.
-            </p>
-            <input
-              id="profile-experience"
-              name="yearsExperience"
-              type="number"
-              min="0"
-              max="60"
-              step="0.5"
-              className="form-input"
-              value={profile.yearsExperience}
-              onChange={handleChange}
-              aria-describedby="exp-help"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="profile-education" className="form-label">
-              Education & Certifications
-            </label>
-            <p className="form-help" id="edu-help">
-              Degrees, bootcamps, certificates, or self-taught background.
-            </p>
-            <input
-              id="profile-education"
-              name="education"
-              type="text"
-              className="form-input"
-              value={profile.education}
-              onChange={handleChange}
-              placeholder="e.g. Self-Taught Developer / Web Accessibility Certificate"
-              aria-describedby="edu-help"
-            />
-          </div>
-
-          <div className="form-group">
             <label htmlFor="profile-summary" className="form-label">
               Professional Summary
             </label>
             <p className="form-help" id="summary-help">
-              A brief 2–3 sentence overview of what kind of work you do and what you are looking for.
+              A brief 2 to 3 sentence overview of what kind of work you do and what you are looking for.
             </p>
             <textarea
               id="profile-summary"
@@ -425,23 +930,647 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
               rows="4"
               className="form-textarea"
               value={profile.summary}
-              onChange={handleChange}
-              placeholder="e.g. Frontend developer with 2 years of experience specializing in accessible web applications and semantic HTML."
+              onChange={handleBasicChange}
+              placeholder="e.g. Frontend developer with 2 years of experience specializing in accessible web applications, responsive layouts, and semantic HTML."
               aria-describedby="summary-help"
             />
           </div>
-        </fieldset>
 
-        <div className="button-row">
+          <div className="form-group">
+            <label htmlFor="profile-experience-years" className="form-label">
+              Total Years of Experience
+            </label>
+            <p className="form-help" id="exp-years-help">
+              Total years of relevant work, volunteer, or self-directed project experience.
+            </p>
+            <input
+              id="profile-experience-years"
+              name="yearsExperience"
+              type="number"
+              min="0"
+              max="60"
+              step="0.5"
+              className="form-input"
+              value={profile.yearsExperience}
+              onChange={handleBasicChange}
+              aria-describedby="exp-years-help"
+            />
+          </div>
+        </fieldset>
+      )}
+
+      {/* SECTION 3: WORK EXPERIENCE */}
+      {currentStep === 3 && (
+        <fieldset disabled={saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Work Experience</legend>
+
+          <p className="form-help" style={{ marginBottom: '1.25rem' }}>
+            List your employment, internships, freelancing, or volunteer roles. Leave empty if you are seeking your first role.
+          </p>
+
+          {profile.experience.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+              <p style={{ margin: '0 0 1rem 0', color: 'var(--color-text-muted)' }}>
+                No work experience entries added yet.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={addExperience}
+                style={{ minHeight: '44px' }}
+              >
+                + Add your first experience
+              </button>
+            </div>
+          ) : (
+            <div>
+              {profile.experience.map((exp, idx) => (
+                <div key={exp.id} className="entry-card">
+                  <div className="entry-card-header">
+                    <h4 className="entry-card-title">
+                      Experience #{idx + 1}: {exp.role || exp.company ? `${exp.role || 'Role'} at ${exp.company || 'Company'}` : 'New Position'}
+                    </h4>
+                    <button
+                      type="button"
+                      className="btn-icon-remove"
+                      onClick={() => removeExperience(exp.id, exp.company, exp.role)}
+                      aria-label={`Remove experience: ${exp.company || 'Untitled'}, ${exp.role || 'Role'}`}
+                    >
+                      &times; Remove Role
+                    </button>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`exp-company-${exp.id}`} className="form-label">
+                      Company or Organization Name
+                    </label>
+                    <input
+                      id={`exp-company-${exp.id}`}
+                      type="text"
+                      className="form-input"
+                      value={exp.company}
+                      onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
+                      placeholder="e.g. Acme Health Solutions"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`exp-role-${exp.id}`} className="form-label">
+                      Job Title or Role
+                    </label>
+                    <input
+                      id={`exp-role-${exp.id}`}
+                      type="text"
+                      className="form-input"
+                      value={exp.role}
+                      onChange={(e) => updateExperience(exp.id, 'role', e.target.value)}
+                      placeholder="e.g. Accessibility Specialist"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`exp-location-${exp.id}`} className="form-label">
+                      Location
+                    </label>
+                    <input
+                      id={`exp-location-${exp.id}`}
+                      type="text"
+                      className="form-input"
+                      value={exp.location}
+                      onChange={(e) => updateExperience(exp.id, 'location', e.target.value)}
+                      placeholder="e.g. Remote / Bengaluru"
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor={`exp-start-${exp.id}`} className="form-label">
+                        Start Date
+                      </label>
+                      <p className="form-help" id={`exp-start-help-${exp.id}`}>
+                        Month and year you began this role.
+                      </p>
+                      <input
+                        id={`exp-start-${exp.id}`}
+                        type="month"
+                        className="form-input"
+                        value={exp.startDate}
+                        onChange={(e) => updateExperience(exp.id, 'startDate', e.target.value)}
+                        aria-describedby={`exp-start-help-${exp.id}`}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label htmlFor={`exp-end-${exp.id}`} className="form-label">
+                        End Date
+                      </label>
+                      <p className="form-help" id={`exp-end-help-${exp.id}`}>
+                        Month and year you ended, or check currently working here.
+                      </p>
+                      <input
+                        id={`exp-end-${exp.id}`}
+                        type="month"
+                        className="form-input"
+                        value={exp.endDate}
+                        disabled={exp.current}
+                        onChange={(e) => updateExperience(exp.id, 'endDate', e.target.value)}
+                        aria-describedby={`exp-end-help-${exp.id}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      id={`exp-current-${exp.id}`}
+                      type="checkbox"
+                      checked={exp.current}
+                      onChange={(e) => updateExperience(exp.id, 'current', e.target.checked)}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                    />
+                    <label htmlFor={`exp-current-${exp.id}`} style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.95rem' }}>
+                      I currently work in this role
+                    </label>
+                  </div>
+
+                  {/* Bullet Points */}
+                  <fieldset style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginTop: '1rem' }}>
+                    <legend style={{ fontWeight: 700, padding: '0 0.5rem', color: 'var(--color-text-main)' }}>
+                      Key Responsibilities & Achievements
+                    </legend>
+                    <p className="form-help">
+                      Write 2 to 3 short lines about what you did. Start with a verb (for example: "Built accessible React components", "Audited pages for WCAG compliance").
+                    </p>
+
+                    <div className="bullet-list-container">
+                      {(exp.bullets || []).map((bullet, bIdx) => (
+                        <div key={bIdx} className="bullet-item-row">
+                          <label htmlFor={`exp-bullet-${exp.id}-${bIdx}`} className="sr-only">
+                            {`Bullet line ${bIdx + 1} for ${exp.company || 'role'}`}
+                          </label>
+                          <input
+                            id={`exp-bullet-${exp.id}-${bIdx}`}
+                            type="text"
+                            className="form-input"
+                            value={bullet}
+                            onChange={(e) => updateBullet(exp.id, bIdx, e.target.value)}
+                            placeholder="e.g. Led redesign to improve screen reader compatibility across 12 pages."
+                          />
+                          <button
+                            type="button"
+                            className="btn-icon-remove"
+                            onClick={() => removeBullet(exp.id, bIdx)}
+                            aria-label={`Remove bullet line ${bIdx + 1} for ${exp.company || 'role'}`}
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => addBullet(exp.id)}
+                      style={{ marginTop: '0.75rem', minHeight: '44px' }}
+                    >
+                      + Add bullet line
+                    </button>
+                  </fieldset>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={addExperience}
+                style={{ marginBottom: '1.5rem', minHeight: '44px' }}
+              >
+                + Add another experience
+              </button>
+            </div>
+          )}
+        </fieldset>
+      )}
+
+      {/* SECTION 4: PROJECTS */}
+      {currentStep === 4 && (
+        <fieldset disabled={saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Personal & Professional Projects</legend>
+
+          <p className="form-help" style={{ marginBottom: '1.25rem' }}>
+            Highlight software applications, websites, research, open-source work, or self-directed projects you have built.
+          </p>
+
+          {profile.projects.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+              <p style={{ margin: '0 0 1rem 0', color: 'var(--color-text-muted)' }}>
+                No projects added yet.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={addProject}
+                style={{ minHeight: '44px' }}
+              >
+                + Add your first project
+              </button>
+            </div>
+          ) : (
+            <div>
+              {profile.projects.map((prj, idx) => (
+                <div key={prj.id} className="entry-card">
+                  <div className="entry-card-header">
+                    <h4 className="entry-card-title">
+                      Project #{idx + 1}: {prj.name || 'Untitled Project'}
+                    </h4>
+                    <button
+                      type="button"
+                      className="btn-icon-remove"
+                      onClick={() => removeProject(prj.id, prj.name)}
+                      aria-label={`Remove project: ${prj.name || 'Untitled'}`}
+                    >
+                      &times; Remove Project
+                    </button>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`prj-name-${prj.id}`} className="form-label">
+                      Project Name
+                    </label>
+                    <input
+                      id={`prj-name-${prj.id}`}
+                      type="text"
+                      className="form-input"
+                      value={prj.name}
+                      onChange={(e) => updateProject(prj.id, 'name', e.target.value)}
+                      placeholder="e.g. AccessHire Portal"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`prj-desc-${prj.id}`} className="form-label">
+                      Project Description
+                    </label>
+                    <p className="form-help" id={`prj-desc-help-${prj.id}`}>
+                      Describe the problem this project solved, what you built, and the impact.
+                    </p>
+                    <textarea
+                      id={`prj-desc-${prj.id}`}
+                      rows="3"
+                      className="form-textarea"
+                      value={prj.description}
+                      onChange={(e) => updateProject(prj.id, 'description', e.target.value)}
+                      placeholder="e.g. Designed and implemented an accessible job matching tool with keyboard shortcuts, high contrast themes, and screen reader optimization."
+                      aria-describedby={`prj-desc-help-${prj.id}`}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`prj-tech-${prj.id}`} className="form-label">
+                      Technologies Used (comma-separated)
+                    </label>
+                    <p className="form-help" id={`prj-tech-help-${prj.id}`}>
+                      List libraries, languages, and tools (e.g. React, Node.js, Express, WCAG).
+                    </p>
+                    <input
+                      id={`prj-tech-${prj.id}`}
+                      type="text"
+                      className="form-input"
+                      value={prj.techString !== undefined ? prj.techString : (Array.isArray(prj.technologies) ? prj.technologies.join(', ') : '')}
+                      onChange={(e) => updateProject(prj.id, 'techString', e.target.value)}
+                      placeholder="e.g. React, Vite, Node.js, Express"
+                      aria-describedby={`prj-tech-help-${prj.id}`}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`prj-link-${prj.id}`} className="form-label">
+                      Project Demo or Repository Link
+                    </label>
+                    <p className="form-help" id={`prj-link-help-${prj.id}`}>
+                      URL to GitHub repository or live website demo (opens in a new tab).
+                    </p>
+                    <input
+                      id={`prj-link-${prj.id}`}
+                      type="url"
+                      className="form-input"
+                      value={prj.link}
+                      onChange={(e) => updateProject(prj.id, 'link', e.target.value)}
+                      placeholder="https://github.com/yourname/project"
+                      aria-describedby={`prj-link-help-${prj.id}`}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={addProject}
+                style={{ marginBottom: '1.5rem', minHeight: '44px' }}
+              >
+                + Add another project
+              </button>
+            </div>
+          )}
+        </fieldset>
+      )}
+
+      {/* SECTION 5: EDUCATION */}
+      {currentStep === 5 && (
+        <fieldset disabled={saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Education Background</legend>
+
+          <p className="form-help" style={{ marginBottom: '1.25rem' }}>
+            List degrees, diplomas, bootcamps, courses, or self-directed learning paths.
+          </p>
+
+          {profile.educationEntries.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--color-surface-alt)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+              <p style={{ margin: '0 0 1rem 0', color: 'var(--color-text-muted)' }}>
+                No education entries added yet.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={addEducation}
+                style={{ minHeight: '44px' }}
+              >
+                + Add education entry
+              </button>
+            </div>
+          ) : (
+            <div>
+              {profile.educationEntries.map((edu, idx) => (
+                <div key={edu.id} className="entry-card">
+                  <div className="entry-card-header">
+                    <h4 className="entry-card-title">
+                      Education #{idx + 1}: {edu.degree || edu.institution ? `${edu.degree || 'Degree'} at ${edu.institution || 'School'}` : 'Education Entry'}
+                    </h4>
+                    <button
+                      type="button"
+                      className="btn-icon-remove"
+                      onClick={() => removeEducation(edu.id, edu.degree)}
+                      aria-label={`Remove education: ${edu.degree || 'Untitled'}`}
+                    >
+                      &times; Remove Education
+                    </button>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`edu-degree-${edu.id}`} className="form-label">
+                      Degree, Certificate, or Field of Study
+                    </label>
+                    <input
+                      id={`edu-degree-${edu.id}`}
+                      type="text"
+                      className="form-input"
+                      value={edu.degree}
+                      onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)}
+                      placeholder="e.g. Bachelor of Science in Computer Science / Web Development Bootcamp"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`edu-inst-${edu.id}`} className="form-label">
+                      Institution, College, or School
+                    </label>
+                    <input
+                      id={`edu-inst-${edu.id}`}
+                      type="text"
+                      className="form-input"
+                      value={edu.institution}
+                      onChange={(e) => updateEducation(edu.id, 'institution', e.target.value)}
+                      placeholder="e.g. State University / FreeCodeCamp"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`edu-year-${edu.id}`} className="form-label">
+                      Graduation Year or Period
+                    </label>
+                    <input
+                      id={`edu-year-${edu.id}`}
+                      type="text"
+                      className="form-input"
+                      value={edu.year}
+                      onChange={(e) => updateEducation(edu.id, 'year', e.target.value)}
+                      placeholder="e.g. 2023 or 2021 – 2023"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor={`edu-details-${edu.id}`} className="form-label">
+                      Additional Details (optional)
+                    </label>
+                    <p className="form-help" id={`edu-details-help-${edu.id}`}>
+                      Relevant coursework, honors, GPA, or notable achievements.
+                    </p>
+                    <textarea
+                      id={`edu-details-${edu.id}`}
+                      rows="2"
+                      className="form-textarea"
+                      value={edu.details}
+                      onChange={(e) => updateEducation(edu.id, 'details', e.target.value)}
+                      placeholder="e.g. Specialized in Human-Computer Interaction, Dean's List."
+                      aria-describedby={`edu-details-help-${edu.id}`}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={addEducation}
+                style={{ marginBottom: '1.5rem', minHeight: '44px' }}
+              >
+                + Add another education
+              </button>
+            </div>
+          )}
+        </fieldset>
+      )}
+
+      {/* SECTION 6: CERTIFICATIONS AND LANGUAGES */}
+      {currentStep === 6 && (
+        <fieldset disabled={saving} style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Certifications and Languages</legend>
+
+          <h4 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+            Professional Certifications
+          </h4>
+          <p className="form-help" style={{ marginBottom: '1rem' }}>
+            Add any accessibility, cloud, coding, or industry certifications you hold.
+          </p>
+
+          {profile.certifications.map((crt, idx) => (
+            <div key={crt.id} className="entry-card" style={{ padding: '1.25rem' }}>
+              <div className="entry-card-header">
+                <span style={{ fontWeight: 700 }}>
+                  Certification #{idx + 1}: {crt.name || 'Untitled'}
+                </span>
+                <button
+                  type="button"
+                  className="btn-icon-remove"
+                  onClick={() => removeCertification(crt.id, crt.name)}
+                  aria-label={`Remove certification: ${crt.name || 'Untitled'}`}
+                >
+                  &times; Remove
+                </button>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor={`crt-name-${crt.id}`} className="form-label">
+                  Certification Name
+                </label>
+                <input
+                  id={`crt-name-${crt.id}`}
+                  type="text"
+                  className="form-input"
+                  value={crt.name}
+                  onChange={(e) => updateCertification(crt.id, 'name', e.target.value)}
+                  placeholder="e.g. Certified Professional in Accessibility Core Competencies (CPACC)"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor={`crt-issuer-${crt.id}`} className="form-label">
+                  Issuing Organization
+                </label>
+                <input
+                  id={`crt-issuer-${crt.id}`}
+                  type="text"
+                  className="form-input"
+                  value={crt.issuer}
+                  onChange={(e) => updateCertification(crt.id, 'issuer', e.target.value)}
+                  placeholder="e.g. IAAP / AWS / Google"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor={`crt-year-${crt.id}`} className="form-label">
+                  Year Issued
+                </label>
+                <input
+                  id={`crt-year-${crt.id}`}
+                  type="text"
+                  className="form-input"
+                  value={crt.year}
+                  onChange={(e) => updateCertification(crt.id, 'year', e.target.value)}
+                  placeholder="e.g. 2024"
+                />
+              </div>
+            </div>
+          ))}
+
           <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving}
+            type="button"
+            className="btn btn-secondary"
+            onClick={addCertification}
+            style={{ marginBottom: '1.75rem', minHeight: '44px' }}
           >
-            {saving ? 'Saving Profile...' : 'Save Profile'}
+            + Add another certification
           </button>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '1.5rem 0' }} />
+
+          <div className="form-group">
+            <label htmlFor="profile-languages" className="form-label">
+              Languages Spoken & Written (comma-separated)
+            </label>
+            <p className="form-help" id="languages-help">
+              List the languages you can work or communicate in (e.g. English, Hindi, French, Spanish).
+            </p>
+            <input
+              id="profile-languages"
+              name="languagesString"
+              type="text"
+              className="form-input"
+              value={profile.languagesString}
+              onChange={handleBasicChange}
+              placeholder="e.g. English, Hindi, Spanish"
+              aria-describedby="languages-help"
+            />
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '1.5rem 0' }} />
+
+          {/* Accessibility Modes Selector Link */}
+          <div style={{ background: 'var(--color-surface-alt)', padding: '1.25rem', borderRadius: 'var(--radius-md)' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', fontWeight: 700 }}>
+              Accessibility Modes
+            </h4>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+              Active modes:{' '}
+              <strong>
+                {modes.length > 0
+                  ? modeInfo.map(m => m.name).join(', ')
+                  : 'None selected (standard mode)'}
+              </strong>
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={openModeSelect}
+              style={{ minHeight: '44px' }}
+            >
+              Choose accessibility modes &rarr;
+            </button>
+          </div>
+        </fieldset>
+      )}
+
+      {/* Guided Form Action Bar (Per-Section Save & Stepping) */}
+      <div className="button-row" style={{ marginTop: '2rem', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div>
+          {currentStep > 1 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => goToSection(currentStep - 1)}
+              disabled={saving}
+              style={{ minHeight: '44px' }}
+            >
+              &larr; Previous: {SECTIONS[currentStep - 2].short}
+            </button>
+          )}
         </div>
-      </form>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleSaveSection(false)}
+            disabled={saving}
+            style={{ minHeight: '44px' }}
+          >
+            {saving ? 'Saving...' : `Save ${currentSectionMeta.short}`}
+          </button>
+
+          {currentStep < 6 ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => handleSaveSection(true)}
+              disabled={saving}
+              style={{ minHeight: '44px' }}
+            >
+              Save & Next: {SECTIONS[currentStep].short} &rarr;
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => handleSaveSection(false)}
+              disabled={saving}
+              style={{ minHeight: '44px' }}
+            >
+              Save All & Finish &check;
+            </button>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
