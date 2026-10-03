@@ -25,8 +25,9 @@ export default function ModeSelect({ onCompleted }) {
 
   return (
     <div className="mode-select-page">
-      <div className="card-section" style={{ maxWidth: '720px', margin: '2rem auto' }}>
+      <section className="card-section" aria-labelledby="mode-select-title" style={{ maxWidth: '720px', margin: '2rem auto' }}>
         <h1
+          id="mode-select-title"
           ref={h1Ref}
           tabIndex={-1}
           className="section-title"
@@ -120,6 +121,7 @@ export default function ModeSelect({ onCompleted }) {
               className="btn btn-primary"
               disabled={!selected}
               aria-describedby={!selected ? 'mode-disabled-explanation' : undefined}
+              aria-label="Continue with selected accessibility mode"
               style={{ minWidth: '180px', fontSize: '1.05rem', padding: '0.85rem 1.75rem' }}
             >
               Continue
@@ -136,7 +138,7 @@ export default function ModeSelect({ onCompleted }) {
             )}
           </div>
         </form>
-      </div>
+      </section>
     </div>
   );
 }

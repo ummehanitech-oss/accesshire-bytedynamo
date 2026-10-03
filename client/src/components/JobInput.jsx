@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useMode } from '../context/ModeContext.jsx';
 
 // Built-in realistic sample job description (> 200 characters)
 const SAMPLE_JOB_TEXT = `Frontend Accessibility Specialist (Remote)
@@ -24,122 +25,174 @@ How to Apply:
 Please submit your resume and a link to your portfolio or GitHub. Include a brief note describing an accessibility improvement you have worked on.`;
 
 export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, loading, loadingStatus }) {
+  const { announce } = useMode();
+
   const [jobText, setJobText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [urlInput, setUrlInput] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errors, setErrors] = useState([]); // Array of { fieldId: string, message: string }
 
-  // Reference to paste textarea so focus can move there on error
+  // References for focus management
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
+  const urlInputRef = useRef(null);
+  const errorSummaryRef = useRef(null);
+
+  // Helper to get error for a specific field
+  const getFieldError = (fieldId) => {
+    const found = errors.find((err) => err.fieldId === fieldId);
+    return found ? found.message : null;
+  };
+
+  // Move focus to error summary helper
+  const triggerErrorSummary = (newErrors, announcementText) => {
+    setErrors(newErrors);
+    if (announce && announcementText) {
+      announce(announcementText);
+    }
+    setTimeout(() => {
+      if (errorSummaryRef.current) {
+        errorSummaryRef.current.focus();
+      }
+    }, 40);
+  };
 
   // Handle Paste Analysis
   const handleAnalyzeText = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
+    setErrors([]);
 
     const trimmed = jobText.trim();
     if (!trimmed) {
-      setErrorMessage('Please paste a job description before analyzing.');
-      if (textareaRef.current) textareaRef.current.focus();
+      triggerErrorSummary(
+        [{ fieldId: 'job-paste-textarea', message: 'Enter a job description to analyze' }],
+        'Submission error: Enter a job description to analyze.'
+      );
       return;
     }
 
     if (trimmed.length < 200) {
-      setErrorMessage('The pasted job description is too short (minimum 200 characters needed).');
-      if (textareaRef.current) textareaRef.current.focus();
+      triggerErrorSummary(
+        [{ fieldId: 'job-paste-textarea', message: 'The pasted job description must be at least 200 characters long' }],
+        'Submission error: The job description must be at least 200 characters long.'
+      );
       return;
     }
 
     try {
       await onAnalyzeText(trimmed);
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to analyze job description.');
-      if (textareaRef.current) textareaRef.current.focus();
+      triggerErrorSummary(
+        [{ fieldId: 'job-paste-textarea', message: err.message || 'Failed to analyze job description.' }],
+        `Analysis failed: ${err.message || 'Server error'}`
+      );
     }
   };
 
   // Handle File Upload Analysis
   const handleAnalyzeFile = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
+    setErrors([]);
 
     if (!selectedFile) {
-      setErrorMessage('Please select a .txt or .pdf file to upload.');
+      triggerErrorSummary(
+        [{ fieldId: 'job-file-upload', message: 'Select a .txt or .pdf file to upload' }],
+        'Submission error: Select a .txt or .pdf file to upload.'
+      );
       return;
     }
 
     try {
       await onAnalyzeFile(selectedFile);
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to analyze uploaded file.');
-      // Move focus to paste textarea so user can continue by pasting
-      if (textareaRef.current) textareaRef.current.focus();
+      triggerErrorSummary(
+        [{ fieldId: 'job-file-upload', message: err.message || 'Failed to analyze uploaded file.' }],
+        `File analysis failed: ${err.message || 'Server error'}`
+      );
     }
   };
 
   // Handle URL Import Analysis
   const handleAnalyzeUrl = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
+    setErrors([]);
 
     const trimmedUrl = urlInput.trim();
     if (!trimmedUrl) {
-      setErrorMessage('Please enter a job page link to import.');
+      triggerErrorSummary(
+        [{ fieldId: 'job-url-input', message: 'Enter a web link to a job posting' }],
+        'Submission error: Enter a web link to a job posting.'
+      );
+      return;
+    }
+
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+      triggerErrorSummary(
+        [{ fieldId: 'job-url-input', message: 'Enter a valid web link starting with http:// or https://' }],
+        'Submission error: Enter a valid web link starting with http:// or https://'
+      );
       return;
     }
 
     try {
       await onAnalyzeUrl(trimmedUrl);
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to read web page.');
-      // Move focus to paste textarea so user can continue by pasting
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
+      triggerErrorSummary(
+        [{ fieldId: 'job-url-input', message: err.message || 'Failed to read web page.' }],
+        `Web import failed: ${err.message || 'Server error'}`
+      );
     }
   };
 
   // Fill in sample job text
   const handleUseSample = () => {
     setJobText(SAMPLE_JOB_TEXT);
-    setErrorMessage('');
+    setErrors([]);
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
   };
 
-  // Clear all inputs
-  const handleClearAll = () => {
-    setJobText('');
-    setSelectedFile(null);
-    setUrlInput('');
-    setErrorMessage('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (textareaRef.current) textareaRef.current.focus();
-  };
-
   return (
     <section className="card-section" aria-labelledby="job-input-heading">
       <h2 id="job-input-heading" className="section-title">
-        Analyze a Job Posting
+        Job Description Input
       </h2>
       <p className="section-subtitle">
         Choose any of the three input methods below. AccessHire will simplify the posting, check your compatibility, and build an application checklist.
       </p>
 
-      {/* Error Message with role="alert" */}
-      {errorMessage && (
+      {/* Accessible Form Error Summary */}
+      {errors.length > 0 && (
         <div
-          id="job-input-error-msg"
-          className="alert-box error"
+          ref={errorSummaryRef}
+          className="error-summary-box"
           role="alert"
-          aria-live="assertive"
+          tabIndex={-1}
+          aria-labelledby="job-error-summary-heading"
         >
-          <span aria-hidden="true">&#9888;</span>
-          <div>
-            <strong>Action Needed:</strong> {errorMessage}
-          </div>
+          <h2 id="job-error-summary-heading" className="error-summary-heading">
+            There is a problem
+          </h2>
+          <ul className="error-summary-list">
+            {errors.map((err) => (
+              <li key={err.fieldId}>
+                <a
+                  href={`#${err.fieldId}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.getElementById(err.fieldId);
+                    if (el) {
+                      el.focus();
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                  }}
+                >
+                  {err.message}
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -150,13 +203,13 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
           role="status"
           aria-live="polite"
         >
-          <span>&#8987;</span>
+          <span aria-hidden="true">&#8987;</span>
           <div>{loadingStatus || 'Analyzing job description with Gemini...'}</div>
         </div>
       )}
 
       {/* Input Method 1: Paste Text */}
-      <form onSubmit={handleAnalyzeText} style={{ marginBottom: '2rem' }}>
+      <form onSubmit={handleAnalyzeText} style={{ marginBottom: '2rem' }} noValidate>
         <fieldset disabled={loading}>
           <legend>Method 1: Paste Text</legend>
           <div className="form-group">
@@ -166,6 +219,12 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
             <p className="form-help" id="paste-help-text">
               Paste between 200 and 12,000 characters from any job advertisement.
             </p>
+            {getFieldError('job-paste-textarea') && (
+              <span id="paste-inline-error" className="field-error-message" role="alert">
+                <span className="sr-only">Error: </span>
+                {getFieldError('job-paste-textarea')}
+              </span>
+            )}
             <textarea
               id="job-paste-textarea"
               ref={textareaRef}
@@ -174,11 +233,13 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               value={jobText}
               onChange={(e) => {
                 setJobText(e.target.value);
-                if (errorMessage) setErrorMessage('');
+                if (getFieldError('job-paste-textarea')) {
+                  setErrors((prev) => prev.filter((err) => err.fieldId !== 'job-paste-textarea'));
+                }
               }}
               placeholder="Paste job posting text here..."
-              aria-describedby={`paste-help-text ${errorMessage ? 'job-input-error-msg' : ''}`.trim()}
-              aria-invalid={Boolean(errorMessage)}
+              aria-describedby={`paste-help-text ${getFieldError('job-paste-textarea') ? 'paste-inline-error' : ''}`.trim()}
+              aria-invalid={Boolean(getFieldError('job-paste-textarea'))}
             />
           </div>
 
@@ -187,6 +248,7 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               type="submit"
               className="btn btn-primary"
               disabled={loading || !jobText.trim()}
+              aria-label="Analyze pasted job description"
             >
               Analyze Job
             </button>
@@ -196,6 +258,7 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               className="btn btn-secondary"
               onClick={handleUseSample}
               disabled={loading}
+              aria-label="Load sample job description for testing"
             >
               Use Sample Job
             </button>
@@ -204,8 +267,12 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setJobText('')}
+                onClick={() => {
+                  setJobText('');
+                  setErrors((prev) => prev.filter((err) => err.fieldId !== 'job-paste-textarea'));
+                }}
                 disabled={loading}
+                aria-label="Clear pasted job description"
               >
                 Clear Text
               </button>
@@ -215,7 +282,7 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
       </form>
 
       {/* Input Method 2: File Upload */}
-      <form onSubmit={handleAnalyzeFile} style={{ marginBottom: '2rem' }}>
+      <form onSubmit={handleAnalyzeFile} style={{ marginBottom: '2rem' }} noValidate>
         <fieldset disabled={loading}>
           <legend>Method 2: Upload File</legend>
           <div className="form-group">
@@ -225,6 +292,12 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
             <p className="form-help" id="file-help-text">
               Accepts .txt and .pdf documents up to 5 MB. Files are processed in memory and never stored on disk.
             </p>
+            {getFieldError('job-file-upload') && (
+              <span id="file-inline-error" className="field-error-message" role="alert">
+                <span className="sr-only">Error: </span>
+                {getFieldError('job-file-upload')}
+              </span>
+            )}
             <input
               id="job-file-upload"
               ref={fileInputRef}
@@ -233,9 +306,12 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               onChange={(e) => {
                 const file = e.target.files && e.target.files[0];
                 setSelectedFile(file || null);
-                if (errorMessage) setErrorMessage('');
+                if (getFieldError('job-file-upload')) {
+                  setErrors((prev) => prev.filter((err) => err.fieldId !== 'job-file-upload'));
+                }
               }}
-              aria-describedby={`file-help-text ${errorMessage ? 'job-input-error-msg' : ''}`.trim()}
+              aria-describedby={`file-help-text ${getFieldError('job-file-upload') ? 'file-inline-error' : ''}`.trim()}
+              aria-invalid={Boolean(getFieldError('job-file-upload'))}
             />
           </div>
 
@@ -244,6 +320,7 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               type="submit"
               className="btn btn-primary"
               disabled={loading || !selectedFile}
+              aria-label="Upload and analyze selected document"
             >
               Upload and Analyze
             </button>
@@ -255,8 +332,10 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
                 onClick={() => {
                   setSelectedFile(null);
                   if (fileInputRef.current) fileInputRef.current.value = '';
+                  setErrors((prev) => prev.filter((err) => err.fieldId !== 'job-file-upload'));
                 }}
                 disabled={loading}
+                aria-label="Clear selected file"
               >
                 Clear File
               </button>
@@ -266,7 +345,7 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
       </form>
 
       {/* Input Method 3: Import from URL */}
-      <form onSubmit={handleAnalyzeUrl}>
+      <form onSubmit={handleAnalyzeUrl} noValidate>
         <fieldset disabled={loading}>
           <legend>Method 3: Import from Link</legend>
           <div className="form-group">
@@ -276,17 +355,27 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
             <p className="form-help" id="url-help-text">
               Works on many public job pages. If it fails, paste the text instead.
             </p>
+            {getFieldError('job-url-input') && (
+              <span id="url-inline-error" className="field-error-message" role="alert">
+                <span className="sr-only">Error: </span>
+                {getFieldError('job-url-input')}
+              </span>
+            )}
             <input
               id="job-url-input"
+              ref={urlInputRef}
               type="url"
               className="form-input"
               value={urlInput}
               onChange={(e) => {
                 setUrlInput(e.target.value);
-                if (errorMessage) setErrorMessage('');
+                if (getFieldError('job-url-input')) {
+                  setErrors((prev) => prev.filter((err) => err.fieldId !== 'job-url-input'));
+                }
               }}
               placeholder="https://example.com/careers/frontend-developer"
-              aria-describedby={`url-help-text ${errorMessage ? 'job-input-error-msg' : ''}`.trim()}
+              aria-describedby={`url-help-text ${getFieldError('job-url-input') ? 'url-inline-error' : ''}`.trim()}
+              aria-invalid={Boolean(getFieldError('job-url-input'))}
             />
           </div>
 
@@ -295,6 +384,7 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               type="submit"
               className="btn btn-primary"
               disabled={loading || !urlInput.trim()}
+              aria-label="Import and analyze job from web address"
             >
               Import and Analyze
             </button>
@@ -303,8 +393,12 @@ export default function JobInput({ onAnalyzeText, onAnalyzeFile, onAnalyzeUrl, l
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setUrlInput('')}
+                onClick={() => {
+                  setUrlInput('');
+                  setErrors((prev) => prev.filter((err) => err.fieldId !== 'job-url-input'));
+                }}
                 disabled={loading}
+                aria-label="Clear job web address"
               >
                 Clear URL
               </button>

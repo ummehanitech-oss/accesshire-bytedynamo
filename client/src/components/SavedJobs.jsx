@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { getApplications, getApplicationById, deleteApplication } from '../api.js';
+import { useMode } from '../context/ModeContext.jsx';
 
+/**
+ * SavedJobs component
+ *
+ * Displays previously analyzed jobs with compatibility scores, checklist progress,
+ * and quick actions to reopen or delete.
+ * Includes:
+ * - Landmark labeling with aria-labelledby
+ * - Heading hierarchy: h2 for section, h3 for each job title
+ * - Descriptive button and link names
+ * - Polite screen reader announcements for loading and deletion
+ */
 export default function SavedJobs({ onSelectJob }) {
+  const { announce } = useMode();
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null); // { type: 'success' | 'error', message: '' }
@@ -12,7 +26,7 @@ export default function SavedJobs({ onSelectJob }) {
       setLoading(true);
       const data = await getApplications();
       setJobs(Array.isArray(data) ? data : []);
-    } catch (err) {
+    } catch (_err) {
       setStatus({
         type: 'error',
         message: 'Could not load saved job applications.'
@@ -48,22 +62,24 @@ export default function SavedJobs({ onSelectJob }) {
 
     try {
       await deleteApplication(jobId);
-      setJobs(prev => prev.filter(j => j.id !== jobId));
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
       setStatus({
         type: 'success',
         message: `Removed "${jobTitle}" from your saved jobs.`
       });
+      announce(`Job "${jobTitle}" deleted from saved jobs.`);
     } catch (err) {
       setStatus({
         type: 'error',
         message: err.message || 'Failed to remove job.'
       });
+      announce(`Failed to delete job: ${err.message || 'Server error'}`);
     }
   };
 
   if (loading) {
     return (
-      <section className="card-section" role="status" aria-live="polite">
+      <section className="card-section" role="status" aria-live="polite" aria-label="Saved jobs loading status">
         <p>Loading saved job analyses...</p>
       </section>
     );
@@ -97,7 +113,7 @@ export default function SavedJobs({ onSelectJob }) {
           </p>
         </div>
       ) : (
-        <ul className="saved-jobs-list" style={{ listStyle: 'none' }}>
+        <ul className="saved-jobs-list" style={{ listStyle: 'none' }} aria-label="Saved Job Applications">
           {jobs.map((job) => {
             const completedCount = Array.isArray(job.completedSteps) ? job.completedSteps.length : 0;
             const totalSteps = job.totalSteps || 0;
@@ -119,6 +135,7 @@ export default function SavedJobs({ onSelectJob }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="source-link"
+                        aria-label={`View original job page for ${job.jobTitle} (opens in new window)`}
                       >
                         <span>View original job page</span>
                         <span aria-hidden="true">&#8599;</span>
@@ -132,7 +149,7 @@ export default function SavedJobs({ onSelectJob }) {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => handleOpen(job.id)}
-                    aria-label={`Open analysis for ${job.jobTitle}`}
+                    aria-label={`Open analysis for ${job.jobTitle} at ${job.company || 'company'}`}
                     style={{ minHeight: '40px', padding: '0.5rem 1rem' }}
                   >
                     Open Analysis
@@ -142,7 +159,7 @@ export default function SavedJobs({ onSelectJob }) {
                     type="button"
                     className="btn btn-danger"
                     onClick={() => handleDelete(job.id, job.jobTitle)}
-                    aria-label={`Delete ${job.jobTitle}`}
+                    aria-label={`Delete saved analysis for ${job.jobTitle}`}
                     style={{ minHeight: '40px', padding: '0.5rem 0.75rem' }}
                   >
                     Delete

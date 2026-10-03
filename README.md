@@ -269,6 +269,11 @@ AccessHire was designed from the ground up to support accessible assistive techn
 - **Semantic Structure:** Native HTML5 landmark tags (`<header>`, `<nav aria-label>`, `<main>`, `<footer>`), valid heading hierarchy (`h1` > `h2` > `h3`), and native `<button>`, `<label for>`, `<fieldset>`, and `<legend>` elements.
 - **Visual Focus Outlines:** High-visibility 3px blue focus rings with 3px offsets (`:focus-visible`) for all interactive elements.
 - **Complete Keyboard Operability:** Every feature is usable using `Tab`, `Shift+Tab`, `Space`, and `Enter` alone.
+- **Global Keyboard Shortcuts:** Fast single- and two-key shortcuts (`g` then `p` for Profile, `g` then `a` for Analyze, `g` then `s` for Saved Jobs, `?` for Help, `Esc` to close), automatically disabled while typing in fields.
+- **Accessible Dialog with Focus Trap:** Shortcuts Help dialog uses `role="dialog"`, `aria-modal="true"`, keeps focus trapped within interactive elements, and restores focus to the opener on close.
+- **Labelled Landmarks & Active Page:** Explicit `aria-label`s on every landmark (`header`, `nav`, `aside`, `main`, `footer`), paired with dynamic `aria-current="page"` on the active nav item.
+- **Form Error Summary with Anchor Links:** Failed form submissions automatically shift focus to an error summary box with direct jump links to invalid inputs and inline error descriptions.
+- **Real-Time Status Announcements:** Polite live regions (`aria-live="polite"`) announce background progress for loading, analysis results ready, saved updates, and job deletions.
 - **Live Announcements:** Dynamic updates use `aria-live="polite"` regions and `role="status"`/`role="alert"` for real-time screen reader feedback.
 - **Focus Management:** Navigation between views and analysis results shifts focus directly to the target heading (`tabIndex={-1}`) to keep assistive tech synchronized.
 - **Accessible Text & Touch Targets:** All body copy is at least 16px with a 1.6 line height and contrast exceeding 4.5:1. Interactive touch targets are sized at >= 44px.
