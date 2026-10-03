@@ -1,0 +1,83 @@
+/* ==========================================================================
+   AccessHire Features Stylesheet (v2 Features)
+   Styles for Resume Import, Application Kit, Auto-Fill, and Related Jobs
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Resume Import Component
+   -------------------------------------------------------------------------- */
+.resume-import-card {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.resume-import-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.resume-import-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-text-main);
+}
+
+.resume-import-desc {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.resume-import-review {
+  background: var(--color-primary-light);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.resume-import-review-title {
+  display: block;
+  font-size: 1.05rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.resume-import-review-options {
+  border: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.resume-import-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+}
+
+.resume-import-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.resume-import-actions .btn {
+  min-height: 44px;
+}
+
+.resume-file-input {
+  display: block;
+  min-height: 44px;
+  width: 100%;
+}

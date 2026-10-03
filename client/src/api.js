@@ -43,6 +43,17 @@ export async function updateProfile(profileData) {
   return handleResponse(res);
 }
 
+export async function importResume(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${BASE_URL}/profile/import-resume`, {
+    method: 'POST',
+    body: formData
+  });
+  return handleResponse(res);
+}
+
 // -----------------------------------------------------------------------------
 // Analysis API
 // -----------------------------------------------------------------------------

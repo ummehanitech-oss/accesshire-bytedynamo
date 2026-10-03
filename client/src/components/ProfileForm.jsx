@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getProfile, updateProfile } from '../api.js';
 import { useMode } from '../context/ModeContext.jsx';
+import ResumeImport from './ResumeImport.jsx';
 
 // Available Adzuna search country options
 const COUNTRY_OPTIONS = [
@@ -518,6 +519,163 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
     }
   };
 
+  const hasExistingData = Boolean(
+    (profile.fullName && profile.fullName.trim()) ||
+    (profile.email && profile.email.trim()) ||
+    (profile.skillsString && profile.skillsString.trim()) ||
+    (profile.summary && profile.summary.trim()) ||
+    (Array.isArray(profile.experience) && profile.experience.length > 0) ||
+    (Array.isArray(profile.projects) && profile.projects.length > 0) ||
+    (Array.isArray(profile.educationEntries) && profile.educationEntries.length > 0)
+  );
+
+  const handleResumeImported = (imported, mergeMode) => {
+    if (mergeMode === 'replace') {
+      const skillsArr = Array.isArray(imported.skills) ? imported.skills : [];
+      const langsArr = Array.isArray(imported.languages) ? imported.languages : [];
+      const rawLinks = imported.links || {};
+
+      setProfile({
+        fullName: imported.fullName || '',
+        email: imported.email || '',
+        phone: imported.phone || '',
+        location: imported.location || '',
+        country: imported.country || 'in',
+        links: {
+          linkedin: rawLinks.linkedin || '',
+          github: rawLinks.github || '',
+          portfolio: rawLinks.portfolio || '',
+          other: Array.isArray(rawLinks.other) ? rawLinks.other : []
+        },
+        summary: imported.summary || '',
+        skillsString: skillsArr.join(', '),
+        yearsExperience: typeof imported.yearsExperience === 'number' ? imported.yearsExperience : 0,
+        experience: Array.isArray(imported.experience)
+          ? imported.experience.map(e => ({
+              id: e.id || `exp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              company: e.company || '',
+              role: e.role || '',
+              location: e.location || '',
+              startDate: e.startDate || '',
+              endDate: e.endDate || '',
+              current: Boolean(e.current),
+              bullets: Array.isArray(e.bullets) ? e.bullets : []
+            }))
+          : [],
+        projects: Array.isArray(imported.projects)
+          ? imported.projects.map(p => ({
+              id: p.id || `prj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              name: p.name || '',
+              description: p.description || '',
+              technologies: Array.isArray(p.technologies) ? p.technologies : [],
+              techString: Array.isArray(p.technologies) ? p.technologies.join(', ') : '',
+              link: p.link || ''
+            }))
+          : [],
+        educationEntries: Array.isArray(imported.educationEntries)
+          ? imported.educationEntries.map(ed => ({
+              id: ed.id || `edu_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              degree: ed.degree || '',
+              institution: ed.institution || '',
+              year: ed.year || '',
+              details: ed.details || ''
+            }))
+          : [],
+        certifications: Array.isArray(imported.certifications)
+          ? imported.certifications.map(c => ({
+              id: c.id || `crt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              name: c.name || '',
+              issuer: c.issuer || '',
+              year: c.year || ''
+            }))
+          : [],
+        languagesString: langsArr.join(', ')
+      });
+    } else {
+      // 'fill-empty': Only fill empty fields, preserve current non-empty entries
+      setProfile(prev => {
+        const existingSkills = prev.skillsString ? prev.skillsString.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const importedSkills = Array.isArray(imported.skills) ? imported.skills : [];
+        const combinedSkills = existingSkills.length > 0 ? existingSkills : importedSkills;
+
+        const existingLangs = prev.languagesString ? prev.languagesString.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const importedLangs = Array.isArray(imported.languages) ? imported.languages : [];
+        const combinedLangs = existingLangs.length > 0 ? existingLangs : importedLangs;
+
+        const rawLinks = imported.links || {};
+
+        return {
+          ...prev,
+          fullName: prev.fullName.trim() ? prev.fullName : (imported.fullName || ''),
+          email: prev.email.trim() ? prev.email : (imported.email || ''),
+          phone: prev.phone.trim() ? prev.phone : (imported.phone || ''),
+          location: prev.location.trim() ? prev.location : (imported.location || ''),
+          country: prev.country || imported.country || 'in',
+          links: {
+            linkedin: prev.links.linkedin.trim() ? prev.links.linkedin : (rawLinks.linkedin || ''),
+            github: prev.links.github.trim() ? prev.links.github : (rawLinks.github || ''),
+            portfolio: prev.links.portfolio.trim() ? prev.links.portfolio : (rawLinks.portfolio || ''),
+            other: prev.links.other.length > 0 ? prev.links.other : (Array.isArray(rawLinks.other) ? rawLinks.other : [])
+          },
+          summary: prev.summary.trim() ? prev.summary : (imported.summary || ''),
+          skillsString: combinedSkills.join(', '),
+          yearsExperience: prev.yearsExperience > 0 ? prev.yearsExperience : (imported.yearsExperience || 0),
+          experience: prev.experience.length > 0
+            ? prev.experience
+            : (Array.isArray(imported.experience)
+                ? imported.experience.map(e => ({
+                    id: e.id || `exp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                    company: e.company || '',
+                    role: e.role || '',
+                    location: e.location || '',
+                    startDate: e.startDate || '',
+                    endDate: e.endDate || '',
+                    current: Boolean(e.current),
+                    bullets: Array.isArray(e.bullets) ? e.bullets : []
+                  }))
+                : []),
+          projects: prev.projects.length > 0
+            ? prev.projects
+            : (Array.isArray(imported.projects)
+                ? imported.projects.map(p => ({
+                    id: p.id || `prj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                    name: p.name || '',
+                    description: p.description || '',
+                    technologies: Array.isArray(p.technologies) ? p.technologies : [],
+                    techString: Array.isArray(p.technologies) ? p.technologies.join(', ') : '',
+                    link: p.link || ''
+                  }))
+                : []),
+          educationEntries: prev.educationEntries.length > 0
+            ? prev.educationEntries
+            : (Array.isArray(imported.educationEntries)
+                ? imported.educationEntries.map(ed => ({
+                    id: ed.id || `edu_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                    degree: ed.degree || '',
+                    institution: ed.institution || '',
+                    year: ed.year || '',
+                    details: ed.details || ''
+                  }))
+                : []),
+          certifications: prev.certifications.length > 0
+            ? prev.certifications
+            : (Array.isArray(imported.certifications)
+                ? imported.certifications.map(c => ({
+                    id: c.id || `crt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                    name: c.name || '',
+                    issuer: c.issuer || '',
+                    year: c.year || ''
+                  }))
+                : []),
+          languagesString: combinedLangs.join(', ')
+        };
+      });
+    }
+
+    // Go to step 1 to review from beginning
+    setCurrentStep(1);
+  };
+
   if (loading) {
     return (
       <section className="card-section" role="status" aria-live="polite">
@@ -536,6 +694,12 @@ export default function ProfileForm({ onProfileSaved, onContinueToAnalyze, profi
       <p className="section-subtitle">
         AccessHire uses your profile to check how well your skills and background match each job posting and build tailored resumes.
       </p>
+
+      {/* Resume Import Component */}
+      <ResumeImport
+        onImportSuccess={handleResumeImported}
+        hasExistingData={hasExistingData}
+      />
 
       {/* Alert shown when user tried to open Analyze before completing profile */}
       {profileIncompleteAlert && (
